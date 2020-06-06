@@ -302,6 +302,7 @@ public final class Board extends javax.swing.JFrame
     public void PlayCard(int combinazione,Carta C)
     {
         Sessione.GiocaCarta(Player,combinazione, C);
+        Sessione.RivalutaPotenziale();
         
         Display();
     }

@@ -59,8 +59,6 @@ public final class CombinationChooser extends javax.swing.JFrame {
         AnalyzeSlot();
 
         this.setVisible(true);
-        
-        System.out.println("CARTA SELEZIONATA: "+S.Card.nome);
     }
     
     public synchronized void AnalyzeSlot()
@@ -71,6 +69,7 @@ public final class CombinationChooser extends javax.swing.JFrame {
         {
             Combination1.setBackground(C1.darker());
             SwitchList.add(Combination1);
+            Combination1.setVisible(true);
         }
         else
         {
@@ -81,6 +80,7 @@ public final class CombinationChooser extends javax.swing.JFrame {
         {
             Combination2.setBackground(C2.darker());
             SwitchList.add(Combination2);
+            Combination2.setVisible(true);
         }
         else
         {
@@ -91,6 +91,7 @@ public final class CombinationChooser extends javax.swing.JFrame {
         {
             Combination3.setBackground(C3.darker());
             SwitchList.add(Combination3);
+            Combination3.setVisible(true);
         }
         else
         {
@@ -101,6 +102,7 @@ public final class CombinationChooser extends javax.swing.JFrame {
         {
             Combination4.setBackground(C4.darker());
             SwitchList.add(Combination4);
+            Combination4.setVisible(true);
         }
         else
         {
@@ -111,6 +113,7 @@ public final class CombinationChooser extends javax.swing.JFrame {
         {
             Combination5.setBackground(C5.darker());
             SwitchList.add(Combination5);
+            Combination5.setVisible(true);
         }
         else
         {
@@ -121,6 +124,7 @@ public final class CombinationChooser extends javax.swing.JFrame {
         {
             Combination6.setBackground(C6.darker()); 
             SwitchList.add(Combination6);
+            Combination6.setVisible(true);
         }
         else
         {
@@ -131,6 +135,7 @@ public final class CombinationChooser extends javax.swing.JFrame {
         {
             Combination7.setBackground(C7.darker()); 
             SwitchList.add(Combination7);
+            Combination7.setVisible(true);
         }
         else
         {
@@ -141,6 +146,7 @@ public final class CombinationChooser extends javax.swing.JFrame {
         {
             Combination8.setBackground(C8.darker());
             SwitchList.add(Combination8);
+            Combination8.setVisible(true);
         }
         else
         {
@@ -151,6 +157,7 @@ public final class CombinationChooser extends javax.swing.JFrame {
         {
             Combination9.setBackground(C9.darker());
             SwitchList.add(Combination9);
+            Combination9.setVisible(true);
         }
         else
         {
@@ -161,6 +168,7 @@ public final class CombinationChooser extends javax.swing.JFrame {
         {
             Combination10.setBackground(C10.darker());
             SwitchList.add(Combination10);
+            Combination10.setVisible(true);
         }
         else
         {
@@ -171,6 +179,7 @@ public final class CombinationChooser extends javax.swing.JFrame {
         {
            Combination11.setBackground(C11.darker());
            SwitchList.add(Combination11);
+           Combination11.setVisible(true);
         }
         else
         {

@@ -259,7 +259,10 @@ public final class Gioco
     {
         CPU.CambioTurno();
         Player.CambioTurno();
-        
+    }
+    
+    public void RivalutaPotenziale()
+    {
         Player.GetTotalPotential(Tavolo);
         CPU.GetTotalPotential(Tavolo);
     }
@@ -329,14 +332,13 @@ public final class Gioco
                     Plr.Scopa();
                 }
             }
-            
-        Plr.GetPoints().ScorePrint();
-        
         boolean EndTurn = FineMano();
         
         CambioTurno();
         
         ControllaTurno();
+        
+        RivalutaPotenziale();
     }
     
     public void SgomberaTavolo()

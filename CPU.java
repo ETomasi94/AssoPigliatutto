@@ -38,13 +38,15 @@ public class CPU extends Giocatore
             {
                 j = 1 + rnd.nextInt(card.Potenziale.size());
                 Sessione.GiocaCarta(this,j,card);
+                Sessione.RivalutaPotenziale();
             }
             else
             {
                 Sessione.GiocaCarta(this,0,card);
+                Sessione.RivalutaPotenziale();
             }
             
-            System.out.println("CPU ha giocato: "+card.GetName());
+            System.out.println("CPU ha giocato: "+card.GetName()+"\n");
             
             if(card.IsMarked())
             {

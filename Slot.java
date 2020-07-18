@@ -7,8 +7,7 @@ import javax.swing.JLabel;
 public class Slot 
 {
     JLabel Label;
-    JLabel Mark;
-    
+
     Carta Card;
     
     public Slot(JLabel L)
@@ -50,29 +49,32 @@ public class Slot
      
      public boolean IsChoosable(int n)
      {
-         return Card.Potenziale.containsKey(n);
+         if(HasCard())
+         {
+            return Card.Potenziale.containsKey(n);
+         }
+         else
+         {
+             return false;
+         }
      }
      
      public void RemoveCard()
      {
-         Card.RimuoviDaSlot();
+         if(HasCard())
+         {
+            Card.RimuoviDaSlot();
+            
+            this.Card = null;
+         }
      }
-     
-     public void SetMarkLabel(JLabel MarkLabel)
-     {
-         Mark = MarkLabel;
-     }
-     
-     public JLabel GetMarkLabel()
-     {
-         return this.Mark;
-     }
-    
+
     public void SetEmpty()
     {
         Card = null;
         
         Label.setIcon(null);
+        
         Label.revalidate();
     }
     

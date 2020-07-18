@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.JLabel;
 
 public class TesterDebugger 
 {
@@ -74,12 +73,6 @@ public class TesterDebugger
     }
     
     public void TestConf()
-    {
-        Tv.remove(3);
-        Tv.add(3,new Carta('s',P1.GetMano().get(0).GetValue()));
-    }
-    
-    public void TestConf1()
     {
         Tv.remove(3);
         Tv.add(3,new Carta('s',P1.GetMano().get(0).GetValue()));
@@ -187,62 +180,7 @@ public class TesterDebugger
             }
         }
     }
-    
-    public void ColorTest()
-    {
-        ArrayList<Slot> Slots = B.CardsOnTable;
-        
-        int i = 0;
-        int mark = 1;
-       
-        while(i < Slots.size()-1)
-        {
-            B.ColorMark(mark,Slots.get(i));
-            i++;
-            mark++;
-        }
-    }
-    
-    public void ButtonTest()
-    {
-        CombinationChooser c = new CombinationChooser(B,P1);
-        
-        JLabel Fittizia = new JLabel();
-        
-        Slot S = new Slot(Fittizia);
-        
-        Carta C = new Carta('s',10);
-        Carta C1 = new Carta('d',4);
-        
-        for(int i=0; i<=10; i++)
-        {
-            C.AggiungiPotenziale(i, C1);
-        }
-        
-        S.AssignCard(C);
-        
-        c.Start(S);
-        
-        c.setVisible(true);
-    }
-    
-    public void ReverseButtonTest()
-    {
-        CombinationChooser c = new CombinationChooser(B,P1);
-        
-        JLabel Fittizia = new JLabel();
-        
-        Slot S = new Slot(Fittizia);
-        
-        Carta C = new Carta('s',10);
-        
-        S.AssignCard(C);
-        
-        c.Start(S);
-        
-        c.setVisible(true);
-    }
-    
+
     public void CombinationTest()
     {       
         if(!Tv.isEmpty())
@@ -261,7 +199,6 @@ public class TesterDebugger
         int Value3 = (int) Math.ceil(Value1 / 3);
         
         System.out.println("VALUE1: "+Value1+" VALUE2: "+Value2+" VALUE3: "+Value3);
-
         
         Tv.add(new Carta('d',Value1));
         
@@ -276,21 +213,14 @@ public class TesterDebugger
     
     public void MaxCombinationGen(ArrayList<Carta> Tav)
     {
-        if(!Tav.isEmpty())
-        {
-            Tav.clear();
-        }
-        
         Carta C1 = new Carta('d',10);
         Carta C2 = new Carta('s',10);
         Carta C3 = new Carta('b',10);
         
-        P1.mano.clear();
+        ClearCards(Tav);
         
-        P1.mano.add(0,C1);
-        
-        P1.mano.add(1,C2);
-        
+        P1.mano.add(0,C1);  
+        P1.mano.add(1,C2);  
         P1.mano.add(2,C3);
         
         Tav.clear();
@@ -315,15 +245,11 @@ public class TesterDebugger
         Carta C2 = new Carta('s',1);
         Carta C3 = new Carta('b',1);
         
-        P1.mano.clear();
+        ClearCards(Tav);
         
-        P1.mano.add(0,C1);
-        
+        P1.mano.add(0,C1);     
         P1.mano.add(1,C2);
-        
         P1.mano.add(2,C3);
-        
-        Tav.clear();
         
         Tav.add(new Carta('c',5));
         Tav.add(new Carta('b',5));
@@ -338,17 +264,14 @@ public class TesterDebugger
         Carta C1 = new Carta('d',1);
         Carta C2 = (new Carta('b',1));
         Carta C3 = (new Carta('d',5));
-        
-        P1.mano.clear();
-        
-        P1.mano.add(0,C1);
-        
-        P1.mano.add(1,C2);
-        
+
+        ClearCards(Tav);
+
+        P1.mano.add(0,C1);      
+        P1.mano.add(1,C2); 
         P1.mano.add(2,C3);
         
-        Tav.clear();
-
+        Tav.add(new Carta('d',10));
         Tav.add(new Carta('s',1));
         Tav.add(new Carta('c',1));
 
@@ -361,20 +284,15 @@ public class TesterDebugger
         Carta C2 = new Carta('s',7);
         Carta C3 = new Carta('b',1);
         
-        P1.mano.clear();
-        
-        P1.mano.add(0,C1);
-        
-        P1.mano.add(1,C2);
-        
+        ClearCards(Tav);
+          
+        P1.mano.add(0,C1);      
+        P1.mano.add(1,C2);    
         P1.mano.add(2,C3);
-        
-        Tav.clear();
         
         Tav.add(new Carta('s',10));
         Tav.add(new Carta('d',7));
-
-        
+     
         Collections.sort(Tav); 
     }
     
@@ -463,5 +381,92 @@ public class TesterDebugger
             Sessione.GettaMani();
             Sessione.Distribuisci();
         }
-    } 
+    }
+    
+    public void ConfigurazioneCritica(ArrayList<Carta> Tav)
+    {
+            ClearCards(Tav);
+            
+            Computer.mano.add(new Carta('s',9));
+            Computer.mano.add(new Carta('s',4));
+
+            Tav.add(new Carta('c',7));
+            Tav.add(new Carta('s',7));
+            Tav.add(new Carta('b',5));
+            Tav.add(new Carta('c',2));
+            
+            P1.HandDrop();
+            P1.mano.add(new Carta('s',8));
+            P1.mano.add(new Carta('d',7));
+    }
+    
+    public void CalcoloPotenzialeMultiploTest(ArrayList<Carta> Tav)
+    {
+        ClearCards(Tav);
+        
+        Carta C1 = new Carta('s',8);
+        Carta C2 = new Carta('s',9);
+        Carta C3 = new Carta('s',10);
+        
+        Carta C4 = new Carta('d',8);
+        Carta C5 = new Carta('d',9);
+        Carta C6 = new Carta('d',10);
+        
+        Carta C7 = new Carta('s',5);
+        Carta C8 = new Carta('c',2);
+        Carta C9 = new Carta('d',2);
+        Carta C10 = new Carta('b',1);
+        Carta C11 = new Carta('b',1);
+        Carta C12 = new Carta('d',1);
+        Carta C13 = new Carta('c',8);
+        Carta C14 = new Carta('c',9);
+        Carta C15 = new Carta('c',10);
+        
+        P1.mano.add(C1);
+        P1.mano.add(C2);
+        P1.mano.add(C3);
+        
+        Computer.mano.add(C4);
+        Computer.mano.add(C5);
+        Computer.mano.add(C6);
+        
+        Tav.add(C7);
+        Tav.add(C8);
+        Tav.add(C9);
+        Tav.add(C10);
+        Tav.add(C11);
+        Tav.add(C12);
+    }
+    
+    public void PrimieraComparatorTest(ArrayList<Carta> Mazzo)
+    {
+        PrimieraComparator Comparator = new PrimieraComparator();
+        
+        Collections.sort(Mazzo,Comparator.reversed());
+        
+        StampaMazzo(Mazzo);
+    }
+    
+    public void HaltTest()
+    {
+        Sessione.Halt();
+    }
+    
+    public void ClearCards(ArrayList<Carta> Tav)
+    {
+          if(!Tav.isEmpty())
+            {
+                Tav.clear();
+            }
+            
+            if(!Computer.mano.isEmpty())
+            {
+                Computer.mano.clear();
+            }
+            
+            if(!P1.mano.isEmpty())
+            {
+                P1.mano.clear();
+            }
+    }
 }

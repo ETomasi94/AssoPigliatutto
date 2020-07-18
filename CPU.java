@@ -1,74 +1,122 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package assopigliatutto;
 
+import java.util.ArrayList;
 import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-/**
- *
- * @author Enrico Tomasi
- */
 public class CPU extends Giocatore
 {
     Gioco Sessione;
     
     Random rnd = new Random();
     
-    public CPU(String n, boolean decision, Gioco g) 
+    KnowledgeBase KB;
+    
+    AI Intelligence = new AI(this);
+
+    public CPU(String n, boolean decision, Gioco g, ArrayList<Carta> Tavolo) 
     {
-        super(n, decision);
+        super(n, decision, Tavolo);
         
         Sessione = g;
+        
+        KB = new KnowledgeBase(); 
     }
     
     public synchronized void GiocaACaso()
     {
         if(!mano.isEmpty())
         {
+            try 
+            {
+                Thread.sleep(750);
+            } 
+            catch (InterruptedException ex) 
+            {
+                Sessione.Halt();
+            }
+            
             int i = rnd.nextInt(mano.size());
+            
             int j = 0;
+            
             Carta card = mano.get(i);
 
             if(card.IsMarked())
             {
                 j = 1 + rnd.nextInt(card.Potenziale.size());
                 Sessione.GiocaCarta(this,j,card);
-                Sessione.RivalutaPotenziale();
             }
             else
             {
                 Sessione.GiocaCarta(this,0,card);
-                Sessione.RivalutaPotenziale();
             }
             
             System.out.println("CPU ha giocato: "+card.GetName()+"\n");
             
             if(card.IsMarked())
             {
-                System.out.println("Ed ha preso: ");
+                System.out.println(" Ed ha preso: ");
+                
+                System.out.print("\t");
                 card.StampaSelezione(j);
                 System.out.println("\n");
             }
-
         }
+        else
+        {
+            Sessione.CambioTurno();
+        }
+    }
+
+    public synchronized void Think()
+    {
+        
+    }
+    
+    public synchronized void Plan()
+    {
+        Intelligence.BuildTree();
+   }
+    
+    @Override
+    public synchronized void PickHand(ArrayList<Carta> Mazzo)
+    {
+        Carta C;
+        
+        for(int i=0; i<3; i++)
+        {
+            C = Mazzo.get(1);
+            mano.add(C);
+            Mazzo.remove(1);  
+        }
+    }
+    
+    public void AggiornaKB(ArrayList<Carta> Mazzo,ArrayList<Carta> ManoGiocatore)
+    {
+        KB.Aggiorna(Mazzo, ManoGiocatore);
     }
     
     @Override
     public void run()
     {
-        while(true)
+        while(active)
         {
             if(YourTurn())
             {
-                GetTotalPotential(Table);
-                GiocaACaso();
+                try
+                {
+                    Thread.sleep(1000);
+                    Plan();
+                    GiocaACaso();
+                }
+                catch(InterruptedException e)
+                {
+                    System.out.println("LA CPU E' STATA INTERROTTA DURANTE LA SUA ESECUZIONE");
+                }
             }
         }
+        
+        System.out.println("CPU TERMINA ESECUZIONE\n");
     }
     
 }

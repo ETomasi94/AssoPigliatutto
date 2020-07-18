@@ -1,38 +1,51 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package assopigliatutto;
 
 import java.util.ArrayList;
 
-/**
- *
- * @author Enrico Tomasi
- */
 public class Giocatore extends Thread
 {
+    /*--------VARIABILI D'ISTANZA----------*/
+    
     String nome;
-    Punteggio points;
+    
+    public Punteggio points;
     
     boolean mazziere;
     
     boolean turn;
     
+    boolean active;
+    
+    boolean hastakenlast;
+    
+    boolean turnstart;
+    
     ArrayList<Carta> mano;
     
     public ArrayList<Carta> Table;
     
-    public Giocatore(String n,boolean decision)
+    /*-------------------------------------------*/
+    
+    /*-------METODO COSTRUTTORE--*/
+    
+    public Giocatore(String n,boolean decision, ArrayList<Carta> Tavolo)
     {
         nome = n;
         points = new Punteggio();
         mazziere = decision;
         mano = new ArrayList(3);
+        
+        active = true;
+        hastakenlast = false;
+        
+        Table = Tavolo;
     }
     
-    public void PickCard(ArrayList<Carta> Mazzo)
+    /*---------------------------*/
+    
+    /*-------METODI DI GIOCO-----*/
+    
+    public synchronized void PickCard(ArrayList<Carta> Mazzo)
     {
         Carta C;
         
@@ -53,28 +66,15 @@ public class Giocatore extends Thread
         }
     }
     
-    public synchronized void GetTotalPotential(ArrayList<Carta> Tavolo)
+    public synchronized void GetTotalPotential(ArrayList<Carta> Tav)
     {
-        for(Carta c : mano)
-        {
-            c.CalcolaPotenziale(Tavolo);
-        }
+            for(Carta c : mano)
+            {
+                c.CalcolaPotenziale(Tav,points);
+            }
     }
     
-    public synchronized void PlayCard(Carta card,int combinazione,ArrayList<Carta> Tavolo)
-    {
-        try
-        {
-            Tavolo.add(card);
-            mano.remove(card);
-        }
-        catch(IndexOutOfBoundsException e)
-        {
-            
-        }
-    }
-    
-    public void Scopa()
+    public synchronized void Scopa()
     {
         points.CallScopa();
     }
@@ -84,8 +84,11 @@ public class Giocatore extends Thread
         points.AddCard(card);
     }
     
-    //DEBUG
-    public void VisualizzaMano()
+    /*----------------------*/
+    
+    /*-------METODI DI DEBUG----*/
+    
+    public synchronized void VisualizzaMano()
     {
         System.out.println("CARTE POSSEDUTE DA "+nome+":\n");
         
@@ -95,32 +98,12 @@ public class Giocatore extends Thread
         }
     }
     
-    public synchronized boolean YourTurn()
-    {
-        return turn;
-    }
-    
-    public void AssignTable(ArrayList<Carta> Tv)
-    {
-        Table = Tv;
-    }
-    
-    public void AssegnaTurnoInizio(boolean a)
-    {
-        turn = a;
-    }
-    
-    public void CambioTurno()
-    {
-        turn = !turn;
-    }
-    
-    public void HandDrop()
+    public synchronized void HandDrop()
     {
         mano.clear();
     }
     
-    public void Reset()
+    public synchronized void Reset()
     {
         if(!mano.isEmpty())
         {
@@ -129,6 +112,10 @@ public class Giocatore extends Thread
         
         points.ResetScore();
     }
+    
+    /*-------FINE METODI DI DEBUG----*/
+    
+    /*------------METODI GETTERS E SETTERS-------------------*/
     
     public int GetHandCards()
     {
@@ -154,19 +141,72 @@ public class Giocatore extends Thread
     public void SetMazziere(boolean M)
     {
         this.mazziere = M;
-    }     
+    }  
+    
+    public boolean IsActive()
+    {
+        return active;
+    }
+    
+    public synchronized boolean YourTurn()
+    {
+        return turn;
+    }
+    
+      public synchronized void AssignTable(ArrayList<Carta> Tv)
+    {
+        Table = Tv;
+    }
+    
+    public synchronized void AssegnaTurno(boolean a)
+    {
+        turn = a;
+    }
+    
+    public synchronized void CambioTurno()
+    {
+        turn = !turn;
+        
+        turnstart = turn;
+    }
+    
+    public void SetTaken()
+    {
+        hastakenlast = true;
+    }
+    
+    public void UnsetTaken()
+    {
+        hastakenlast = false;
+    }
+    
+    public boolean GetLastToTake()
+    {
+        return hastakenlast;
+    }
+    
+    /*-------FINE METODI GETTERS E SETTERS-----------*/
+    
+    /*------METODI CICLO DI VITA DEL THREAD---------*/
+    
+    public void ShutDown()
+    {
+        active = false;
+    }
     
     @Override
     public void run()
     {
-        while(true)
-        {
+        while(active)
+        {    
             if(YourTurn())
             {
-                GetTotalPotential(Table);
             }
-                
         }
+        
+        System.out.println("GIOCATORE TERMINA ESECUZIONE\n");
     }
+    
+    /*------FINE METODI CICLO DI VITA DEL THREAD---------*/
    
 }

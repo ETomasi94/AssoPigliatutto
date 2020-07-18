@@ -6,32 +6,48 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public final class Gioco
+public final class Gioco extends Thread
 {
+     /*--------VARIABILI D'ISTANZA----------*/
     CPU CPU;
+    
     Giocatore Player;
     
     ArrayList<Carta> Carte;
+    
     ArrayList<Carta> Tavolo;
     
     TesterDebugger Test;
     
+    Board Interface;
+    
     boolean Turn;
     
-    ExecutorService Sfidanti = Executors.newFixedThreadPool(2);
+    static boolean Halt;
     
-    public Gioco() 
+    ExecutorService Sfidanti = Executors.newFixedThreadPool(2);
+     /*-------------------------------------------*/
+    
+    /*-------METODO COSTRUTTORE--*/
+    
+    public Gioco(Board I) 
     {
         InizializzaGiocatori();
         InizializzaMazzo();
         
+        Halt = false;
+        
+        Interface = I;
+
         Test = new TesterDebugger(this); 
     }
+    /*---------------------------*/
     
+    /*--------METODI DI INIZIALIZZAZIONE DELLE VARIABILI D'ISTANZA----*/
     public void InizializzaGiocatori()
     {
-        CPU = new CPU("CPU",true,this);
-        Player = new Giocatore("Player",false);
+        CPU = new CPU("CPU",true,this,Tavolo);
+        Player = new Giocatore("Player",false,Tavolo);
         
         Sfidanti.submit(CPU);
         Sfidanti.submit(Player);
@@ -47,7 +63,7 @@ public final class Gioco
             Carte.add(new Carta('b',i));
             Carte.add(new Carta('c',i));
             Carte.add(new Carta('d',i));
-        }
+        }      
     }
     
     public ArrayList<Carta> InizializzaTavolo()
@@ -67,6 +83,7 @@ public final class Gioco
         
         return T;    
     }
+    /*-----------------------------------------------------------*/
     
     public void DistribuisciInTavolo()
     {
@@ -87,7 +104,7 @@ public final class Gioco
         
         //MISCHIAMO IL MAZZO
         Collections.shuffle(Carte);
-
+       
         boolean Mazziere = rnd.nextBoolean(); 
 
         CPU.SetMazziere(Mazziere);
@@ -98,9 +115,11 @@ public final class Gioco
         
         Player.PickHand(Carte);
         
-        CPU.AssegnaTurnoInizio(Mazziere);
+        Turn = !Mazziere;
         
-        Player.AssegnaTurnoInizio(!Mazziere);
+        CPU.AssegnaTurno(Turn);
+        
+        Player.AssegnaTurno(!Turn);
         
         Tavolo = InizializzaTavolo();
 
@@ -109,12 +128,15 @@ public final class Gioco
         if(Valida)
         {
             Collections.sort(Tavolo);
-
+            
+            Test.ConfigurazioneCritica(Tavolo);
+            
             Turn = ControllaTurno();
         }
         else
         {
             InizializzaMazzo();
+            
             Player.Reset();
             CPU.Reset();
             
@@ -122,12 +144,13 @@ public final class Gioco
         }
     }
     
-    public void Distribuisci()
+    public synchronized void Distribuisci()
     {
         if(!MazzoVuoto())
         {
             CPU.PickHand(Carte);
             Player.PickHand(Carte);
+            
             DistribuisciInTavolo();
             
             if(MazzoVuoto())
@@ -145,6 +168,8 @@ public final class Gioco
     
     public void FinePartita()
     {
+        CheckUltimaPresa();
+        
         DichiaraVincitore();
     }
     
@@ -153,6 +178,7 @@ public final class Gioco
         if(CPU.GetMano().isEmpty() && Player.GetMano().isEmpty())
         {
             Distribuisci();
+            
             return true;
         }
         else
@@ -163,11 +189,18 @@ public final class Gioco
     
     public void DichiaraVincitore()
     {
+        String Winner = "";
+        
         int GLOBALCPU = 0;
         int GLOBALPLAYER  = 0;
         
+        System.out.println("----DICHIARAZIONE DEL GIOCATORE VINCITORE----");
+        
         Punteggio CPUSCORE = DichiaraPunteggioCPU();
         Punteggio PLAYERSCORE = DichiaraPunteggioGiocatore();
+        
+        System.out.println("NUMERO DI CARTE PRESE IN TOTALE:");
+        System.out.println("CPU: "+CPUSCORE.GetTotal()+"| GIOCATORE: "+PLAYERSCORE.GetTotal());
         
         if((CPUSCORE.GetTotal() > PLAYERSCORE.GetTotal()))
         {
@@ -178,6 +211,9 @@ public final class Gioco
             GLOBALPLAYER++;
         }
         
+        System.out.println("NUMERO DI DENARI PRESI IN TOTALE:");
+        System.out.println("CPU: "+CPUSCORE.GetDenari()+"| GIOCATORE: "+PLAYERSCORE.GetDenari());
+        
         if((CPUSCORE.GetDenari() > PLAYERSCORE.GetDenari()))
         {
             GLOBALCPU++;
@@ -187,15 +223,19 @@ public final class Gioco
             GLOBALPLAYER++;
         }
         
-        if((CPUSCORE.GetSettebello() > PLAYERSCORE.GetSettebello()))
+        System.out.println("SETTEBELLO OTTENUTO: ");
+        System.out.println("CPU: "+CPUSCORE.GetSettebello()+"| GIOCATORE: "+PLAYERSCORE.GetSettebello());
+        if(CPUSCORE.GetSettebello())
         {
             GLOBALCPU++;
         }
-        else if(CPUSCORE.GetSettebello() < PLAYERSCORE.GetSettebello())
+        else if(PLAYERSCORE.GetSettebello())
         {
             GLOBALPLAYER++;
         }
         
+        System.out.println("PUNTI DI PRIMIERA: ");
+        System.out.println("CPU: "+CPUSCORE.GetPrimiera()+"| GIOCATORE: "+PLAYERSCORE.GetPrimiera());
         if((CPUSCORE.GetPrimiera() > PLAYERSCORE.GetPrimiera()))
         {
             GLOBALCPU++;
@@ -205,6 +245,8 @@ public final class Gioco
             GLOBALPLAYER++;
         }
         
+        System.out.println("SCOPE OTTENUTE: ");
+        System.out.println("CPU: "+CPUSCORE.GetScope()+"| GIOCATORE: "+PLAYERSCORE.GetScope());
         if((CPUSCORE.GetScope() > PLAYERSCORE.GetScope()))
         {
             GLOBALCPU++;
@@ -216,54 +258,107 @@ public final class Gioco
         
         if(GLOBALPLAYER > GLOBALCPU)
         {
+            Winner = Player.nome;
             System.out.println("VINCE IL GIOCATORE");
         }
         else if(GLOBALPLAYER < GLOBALCPU)
         {
+            Winner = "CPU";
             System.out.println("VINCE LA CPU");
         }
         else
         {
+            Winner = "DRAW";
             System.out.println("ABBIAMO UN PAREGGIO");
         }
-    }
-    
-    public Punteggio DichiaraPunteggioCPU()
-    {
-        return CPU.GetPoints();
-    }
-    
-    public Punteggio DichiaraPunteggioGiocatore()
-    {
-        return Player.GetPoints();
+        
+        Interface.GoToScores(PLAYERSCORE, CPUSCORE, Winner);
     }
     
     public boolean ControllaTurno()
     {
         Player.AssignTable(Tavolo);
+        
         CPU.AssignTable(Tavolo);
         
+        AggiornaKB();
+
+        RivalutaPotenziale();
+ 
         if(CPU.YourTurn())
         {
             System.out.println("E' il turno della CPU\n");
+            
             return true;
         }
         else
         {
             System.out.println("E' il turno del giocatore\n");
+            
+            VisualizzaTurno();
+            
             return false;
         }
     }
     
-    public void CambioTurno()
+    public void UltimaPresa(Giocatore Plr)
     {
-        CPU.CambioTurno();
-        Player.CambioTurno();
+        if(Plr.equals(Player))
+        {
+            Player.SetTaken();
+            
+            CPU.UnsetTaken();
+        }
+        else
+        {
+            Player.UnsetTaken();
+            
+            CPU.SetTaken();
+        }
     }
     
-    public void RivalutaPotenziale()
+    public void CheckUltimaPresa()
+    {      
+        if(Player.GetLastToTake())
+        {
+            Ripulisci(Player);
+            
+            System.out.println("Si aggiudica il resto del tavolo: "+Player.nome);
+        }
+        else
+        {
+            Ripulisci(CPU);
+            
+            System.out.println("Si aggiudica il resto del tavolo: "+CPU.nome);
+        }
+    }
+    
+    public synchronized void Ripulisci(Giocatore Plyr)
     {
+        for(Carta card : Tavolo)
+        {
+            System.out.println("@ "+card.nome);
+            
+            Plyr.Score(card);
+        }
+        
+        Tavolo.clear();
+    }
+    
+    public void CambioTurno()
+    {
+        Turn = !Turn;
+        
+        CPU.AssegnaTurno(Turn);
+        Player.AssegnaTurno(!Turn);
+    }
+    
+    public synchronized void RivalutaPotenziale()
+    {
+        Collections.sort(Tavolo);
+        
         Player.GetTotalPotential(Tavolo);
+        
         CPU.GetTotalPotential(Tavolo);
     }
     
@@ -297,11 +392,15 @@ public final class Gioco
         return response;
     }
     
+    public void AggiornaKB()
+    {
+        CPU.AggiornaKB(Carte,Player.mano);
+    }
+    
     public void GiocaCarta(Giocatore Plr,int combinazione,Carta C)
     {
         Plr.mano.remove(C);
-        Plr.Score(C);
-        
+
         boolean AssoDoppio = false;
         
             if(!C.IsMarked())
@@ -323,6 +422,10 @@ public final class Gioco
 
                     Plr.Score(card);
                 }
+                
+                Plr.Score(C);
+                
+                UltimaPresa(Plr);
             }
 
             if(Tavolo.isEmpty())
@@ -330,17 +433,20 @@ public final class Gioco
                 if(!C.IsAnAce() || (AssoDoppio))
                 {
                     Plr.Scopa();
+                    
+                    UltimaPresa(Plr);
                 }
             }
         boolean EndTurn = FineMano();
-        
+
         CambioTurno();
         
         ControllaTurno();
         
-        RivalutaPotenziale();
+        Interface.Display();
     }
-    
+
+    /*-------METODI DI DEBUG----*/
     public void SgomberaTavolo()
     {
         Tavolo.clear();
@@ -358,6 +464,113 @@ public final class Gioco
         Player.VisualizzaMano();
     }
     
+    public int ContaBastoni(ArrayList<Carta> CRDS)
+    {
+        int a = 0;
+        
+        for(Carta C : CRDS)
+        {
+            if(C.seme.equals("bastoni"))
+            {
+                a++;
+            }
+        }
+        
+        return a;
+    }
+    
+    public int ContaSpade(ArrayList<Carta> CRDS)
+    {
+        int a = 0;
+        
+        for(Carta C : CRDS)
+        {
+            if(C.seme.equals("spade"))
+            {
+                a++;
+            }
+        }
+        
+        return a;
+    }
+    
+    public int ContaCoppe(ArrayList<Carta> CRDS)
+    {
+        int a = 0;
+        
+        for(Carta C : CRDS)
+        {
+            if(C.seme.equals("coppe"))
+            {
+                a++;
+            }
+        }
+        
+        return a;
+    }
+    
+    public int ContaDenari(ArrayList<Carta> CRDS)
+    {
+        int a = 0;
+        
+        for(Carta C : CRDS)
+        {
+            if(C.seme.equals("denari"))
+            {
+                a++;
+            }
+        }
+        
+        return a;
+    }
+    
+    public boolean CercaSetteBello(ArrayList<Carta> CRDS)
+    {
+        Carta C = new Carta('d',7);
+        
+        return CRDS.contains(C);
+    }
+    
+    public int ContaValore(ArrayList<Carta> CRDS, int vl)
+    {
+        int a = 0;
+        
+        for(Carta C : CRDS)
+        {
+            if(C.valore == vl)
+            {
+                a++;
+            }
+        }
+        
+        return a;
+    }
+    
+    public void VerificaKB(CPU Computer)
+    {     
+        int Confronto = (ContaBastoni(Carte) + ContaBastoni(Player.mano));
+        
+        System.out.println("CHECK BASTONI: "+Confronto);
+        
+        Confronto = (ContaCoppe(Carte) + ContaCoppe(Player.mano));
+        
+        System.out.println("CHECK COPPE: "+Confronto);
+        
+        Confronto = (ContaSpade(Carte) + ContaSpade(Player.mano));
+        
+        System.out.println("CHECK SPADE: "+Confronto);
+        
+        Confronto = (ContaDenari(Carte) + ContaDenari(Player.mano));
+        
+        System.out.println("CHECK DENARI: "+Confronto);
+        
+        boolean Verifica = (Computer.KB.Settebello) == (CercaSetteBello(Carte) || CercaSetteBello(Player.mano));
+        
+        System.out.println("CHECK SETTEBELLO: "+Verifica);
+    }
+    /*-------FINE METODI DI DEBUG----*/
+    
+     /*--------------METODI GETTERS E SETTERS-----------------*/
     public ArrayList<Carta> GetTavolo()
     {
         return Tavolo;
@@ -382,6 +595,38 @@ public final class Gioco
     {
         return this.Player;
     }
+    
+      public Punteggio DichiaraPunteggioCPU()
+    {
+        return CPU.GetPoints();
+    }
+    
+    public Punteggio DichiaraPunteggioGiocatore()
+    {
+        return Player.GetPoints();
+    }
+    /*------------------------------------------------------------------*/
+    
+    /*------METODI DEL CICLO DI VITA DEL THREAD---------*/
+    public void Halt()
+    {
+        System.out.println("Fine della partita\n");
+        
+        Halt = true;
+        
+        Player.ShutDown();
+        CPU.ShutDown();
+        
+        Sfidanti.shutdownNow();     
+        
+        Interface.Exit();
+    }
+    
+    public static boolean IsHalted()
+    {
+        return Halt;
+    }
+    /*-----------------------------------------------------*/
     
      public Carta DecodificaCarta(int codice)
     {
@@ -419,4 +664,56 @@ public final class Gioco
          
          return C;
     }
+     
+    public void VisualizzaTurno()
+    {
+        System.out.println("===================================================");
+        System.out.println("----------------TAVOLO-----------------------------");
+        for(Carta C : Tavolo)
+        {
+            System.out.print("| "+C.seme+"-"+C.valore+" |-");
+        }
+        System.out.println("\n");
+        
+        System.out.println("------------MANO DEL GIOCATORE----------------------");
+        for(Carta C : Player.GetMano())
+        {
+              System.out.print("| "+C.seme+"-"+C.valore+" |-");
+        }
+        System.out.println("\n");
+        System.out.println("===================================================");
+        System.out.println("\n");
+    }
+    
+    public boolean StandOff()
+    {
+        boolean Condition1 = ((Player.mano.isEmpty()) && (Player.YourTurn()));
+        boolean Condition2 = ((CPU.mano.isEmpty()) && (CPU.YourTurn()));
+        
+        return (Condition1 || Condition2);
+    }
+    
+    public boolean NoCardForNoOne()
+    {
+        boolean Condition1 = ((Player.mano.isEmpty()) && (CPU.mano.isEmpty()));
+        
+        return Condition1;
+    }
+     
+    @Override
+     public void run()
+     {
+         while(!Halt)
+         {
+             if(StandOff())
+             {
+                 CambioTurno();
+             }
+             
+             if(NoCardForNoOne())
+             {
+                 Distribuisci();
+             }
+         }
+     }
 }

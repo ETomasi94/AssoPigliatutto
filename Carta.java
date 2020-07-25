@@ -1,4 +1,3 @@
-
 package assopigliatutto;
 
 import java.util.ArrayList;
@@ -19,6 +18,9 @@ public class Carta implements Comparable<Carta>
     ConcurrentSkipListMap<Integer,ArrayList<Carta>> Potenziale;
     ConcurrentSkipListMap<Integer,Double> ValoriPotenziale;
     
+    double ThoughtProbability;
+    double Weight;
+    
     public Carta(char s,int v)
     {
         valore = v;
@@ -28,7 +30,10 @@ public class Carta implements Comparable<Carta>
         codice = valore;
         
         Potenziale = new ConcurrentSkipListMap();
+        
         ValoriPotenziale = new ConcurrentSkipListMap();
+        
+    
         
         switch(v)
         {
@@ -89,6 +94,10 @@ public class Carta implements Comparable<Carta>
         }
    
         nome += seme;
+        
+        ThoughtProbability =  1.0;
+        
+        Weight = 1.0;
     }
     
     public void AssegnaSlot(Slot S)
@@ -138,6 +147,22 @@ public class Carta implements Comparable<Carta>
         Scelte.add(c);
     }
     
+    public void AggiungiValorePeso(int marchio,Carta c,Punteggio Score)
+    {
+        Double Scelta = Pesa(c,Score);
+        
+        if(ValoriPotenziale.containsKey(marchio))
+        {
+            Double ValoreScelta = ValoriPotenziale.get(marchio);
+            Scelta += ValoreScelta;
+            ValoriPotenziale.put(marchio,Scelta);
+        }
+        else
+        {
+            ValoriPotenziale.put(marchio,Scelta);
+        }
+    }
+    
     public void ResettaPotenziale()
     {
         Potenziale.clear();
@@ -149,6 +174,8 @@ public class Carta implements Comparable<Carta>
           ogni volta
         */
         this.ResettaPotenziale();
+        
+        Double Peso = Pesa(this,Score);
 
         if(!Tavolo.isEmpty())
         {
@@ -164,6 +191,10 @@ public class Carta implements Comparable<Carta>
                     {
                         AggiungiPotenziale(index,C);
                         
+                        AggiungiValorePeso(index,C,Score);
+                        
+                        AggiungiValorePeso(index,this,Score);
+                        
                         index++;
                         
                         UgualePotenziale = true;
@@ -172,7 +203,7 @@ public class Carta implements Comparable<Carta>
                 
                 if(!UgualePotenziale)
                 {
-                    PotentialCalculating(Tavolo,0,0,Score);
+                    PotentialCalculating(Tavolo,0,Peso,Score);
                 }
       
             }
@@ -192,28 +223,56 @@ public class Carta implements Comparable<Carta>
 
                         AggiungiPotenziale(index,C);
                         
+                        AggiungiValorePeso(index,C,Score);
+                        
+                        AggiungiValorePeso(index,this,Score);
+                        
                         index++;
                   }
 
                   AggiungiPotenziale(1,C);
+                  
+                  AggiungiValorePeso(1,C,Score);
                }
+              
+              if(!response)
+              {
+                  AggiungiValorePeso(1,this,Score);
+              }
             }
         }
+        
+        Weight = PesoMedio();
+    }
+    
+    public Double PesoMedio()
+    {
+        Double R = 0.0;
+        
+        if(!ValoriPotenziale.isEmpty())
+        {
+            for(Double D : ValoriPotenziale.values())
+            {
+                R += D;
+ 
+            }
+
+            R /= ValoriPotenziale.size() * (1.00);
+        }
+        
+        return R;
     }
     
     public Double Pesa(Carta Card,Punteggio Score)
     {
         //Costanti perché sempre graditi, aldilà del punteggio corrente
         double PesoDelSettebello = 1;
-        double PesoDelleScope = 1;
-        
+
         /*Contribuiscono, in base al fatto che sia necessario o meno, a decidere
           se vale la pena di prendere questa carta*/
         double PunteggioCarta = 0.3333;
         double PesoDeiDenari = 0.3333;
         double PesoInPrimiera = 0.3333;
-        
-        double Probability = 0.0;
         
         double WeightedValue = 0.0;
         double Result = 0.0;
@@ -242,10 +301,10 @@ public class Carta implements Comparable<Carta>
         }
 
         //Punteggio Standard associato ad ogni carta
-        WeightedValue += 1.0;
+        WeightedValue *= 1.0;
 
         Result += WeightedValue;
- 
+
         return Result;
     }
     
@@ -299,7 +358,7 @@ public class Carta implements Comparable<Carta>
         return Result;
     }
     
-    public void PotentialCalculating(ArrayList<Carta> Cards,int start,int FirstIndex,Punteggio Score)
+    public void PotentialCalculating(ArrayList<Carta> Cards,int start,Double InitialWeight,Punteggio Score)
     {        
         ArrayList<ArrayList<Carta>> Result = new ArrayList();
         ArrayList<Carta> Temp = new ArrayList();
@@ -311,11 +370,8 @@ public class Carta implements Comparable<Carta>
 
         for(int i=0;i<Result.size();i++)
         {
-            if(!Potenziale.containsValue(Result.get(i)))
-            {              
-                Potenziale.put(i+1,Result.get(i));
-                ValoriPotenziale.put(i+1,Weights.get(i));
-            }
+            Potenziale.put(i+1,Result.get(i));
+            ValoriPotenziale.put(i+1,Weights.get(i)+InitialWeight);
         }
     }
     
@@ -325,13 +381,14 @@ public class Carta implements Comparable<Carta>
         
           if(Target==0)
           {             
-            Result.add(new ArrayList<Carta>(Temp));
+            Result.add(new ArrayList<>(Temp));
             Weights.add(Weight);
             return;
           }
           
         if(Target<0)
         {
+            Weight = 0.0;
             return;
         }
  
@@ -511,6 +568,16 @@ public class Carta implements Comparable<Carta>
        
        return result;
    }
+   
+   public double GetProbability()
+   {
+       return ThoughtProbability;
+   }
+   
+   public void SetProbability(double Probability)
+   {
+       ThoughtProbability = Probability;
+   }
 
     @Override
     public int compareTo(Carta c1) 
@@ -522,5 +589,5 @@ public class Carta implements Comparable<Carta>
     {
         return (this.valore - c1.valore);
     }
-  
+    
 }

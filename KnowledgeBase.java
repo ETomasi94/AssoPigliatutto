@@ -1,6 +1,9 @@
 package assopigliatutto;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class KnowledgeBase 
 {
@@ -17,8 +20,11 @@ public class KnowledgeBase
     
     boolean Settebello;
     
-    public KnowledgeBase()
+    CPU ProcessingUnit;
+    
+    public KnowledgeBase(CPU Comp)
     {
+        ProcessingUnit = Comp;
         Inizializza();
     }
     
@@ -63,44 +69,83 @@ public class KnowledgeBase
     
      /*----METODI DI CALCOLO DELLE PROBABILITA'----*/
      
-    public float TotalProbability()
+    public double TotalProbability()
     {      
-        float Probability =(float) ((float) 1.0/(Residue*1.0));
+        double Probability = (1.0/(Residue*1.0));
+        
+        Probability = BigDecimal.valueOf(Probability).setScale(3,RoundingMode.HALF_DOWN).doubleValue();
 
         return Probability;
     }
     
-    public float SeedProbability(String seme)
+    public double SeedProbability(String seme)
     {
-        float Probability = 0;
+        double Probability;
+        Probability = 0.0;
         
         switch(seme)
         {
             case("bastoni"):
-                Probability = (float) ((Bastoni * (1.0)) / (Residue * (1.0)));
+                Probability = ((Bastoni * (1.0)) / (Residue * (1.0)));
                 break;
             case("coppe"):
-                Probability = (float) ((Coppe* (1.0)) / (Residue * (1.0)));
+                Probability = ((Coppe* (1.0)) / (Residue * (1.0)));
                 break;
             case("denari"):
-                Probability = (float) ((Denari* (1.0)) / (Residue * (1.0)));
+                Probability = ((Denari* (1.0)) / (Residue * (1.0)));
                 break;
             case("spade"):
-                Probability = (float) ((Spade* (1.0)) / (Residue * (1.0)));
+                Probability = ((Spade* (1.0)) / (Residue * (1.0)));
                 break;
             default:
-                Probability = 0;
+                Probability = 0.0;
                 break;
         }
+        
+        Probability = BigDecimal.valueOf(Probability).setScale(3,RoundingMode.HALF_DOWN).doubleValue();
         
         return Probability;
     }
     
-    public float ValueProbability(int valore)
+    public double ValueProbability(int valore)
     {
-        float Probability = (float) ((float) (Valori.get(valore-1)*1.0) / (Residue * 1.0));
+        double Probability = ((Valori.get(valore-1)*1.0) / (Residue * 1.0));
+        
+        Probability = BigDecimal.valueOf(Probability).setScale(3,RoundingMode.HALF_DOWN).doubleValue();
         
         return Probability;
+    }
+    
+    public double ComplessiveProbability(Carta C)
+    {
+        double P1;
+        
+        if(Carte.contains(C))
+        {
+            P1 = ValueProbability(C.valore) * SeedProbability(C.seme) * TotalProbability();
+        }
+        else
+        {
+            P1 = 0.0;
+        }
+        
+        return P1;
+    }
+    
+    public void ProbabilitySortAndTest()
+    {
+       for(Carta C : Carte)
+       {
+           C.SetProbability(ComplessiveProbability(C));
+       }
+        
+       ProbabilityComparator Comparator = new ProbabilityComparator(); 
+       Collections.sort(Carte,Comparator);
+
+       for(Carta C : Carte)
+       {
+           System.out.println("CARTA: "+C.nome+" PROBABILITA': "+C.ThoughtProbability);
+       }
     }
     
     public void ContaValore(int v)
@@ -207,6 +252,12 @@ public class KnowledgeBase
         }
     }
     
+    public void RimuoviCarta(Carta C)
+    {
+        Carte.remove(C);
+        AggiornaStatisticheCarte();
+    }
+    
     /*----FINE METODI DI CALCOLO DELLE PROBABILITA'----*/
     
     /*----METODI DI VERIFICA----*/
@@ -233,6 +284,26 @@ public class KnowledgeBase
     public int GetResidual()
     {
         return Residue;
+    }
+    
+    public ArrayList<Carta> GetMostValuableCards(ArrayList<Carta> Tavolo,Punteggio Score)
+    {
+        for(Carta C : Carte)
+         {
+            C.CalcolaPotenziale(Tavolo, Score);
+         }
+        
+        WeightComparator Comparator = new WeightComparator();
+         
+        Collections.sort(Carte,Comparator);
+        
+        ArrayList<Carta> Res = new ArrayList<Carta>();
+        
+        Res.add(Carte.get(0));
+        Res.add(Carte.get(1));
+        Res.add(Carte.get(2));
+
+        return Res;
     }
     
     public void SetResidual(int x)
@@ -272,6 +343,12 @@ public class KnowledgeBase
     
     public void CopyKB(KnowledgeBase Dest)
     {
+        if(Dest == null)
+        {
+            System.out.println("CREANDO UNA NUOVA KB");
+            Dest = new KnowledgeBase(ProcessingUnit);
+        }
+        
         Dest.Carte = Carte;
         Dest.Valori = Valori;
 

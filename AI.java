@@ -4,12 +4,13 @@ import java.util.ArrayList;
 
 public class AI 
 {
-    AlberoDiDecisione DecisionTree;
+    Stato DecisionTree;
     
     CPU ProcessingUnit;
     
     ArrayList<Carta> Table;
     ArrayList<Carta> Hand;
+    ArrayList<Carta> Opponent;
     
     KnowledgeBase KB;
     Punteggio Score;
@@ -19,22 +20,161 @@ public class AI
     public AI(CPU C)
     {
         ProcessingUnit = C;
-        Table = C.Table;
-        Hand = C.mano;
-        KB = C.KB;
-        Score = C.points;
     }
     
-    public void BuildTree()
-    {
-        IsMax = ProcessingUnit.turn;
-        
-        Stato S = new Stato("ATTUALE",Table,Hand,KB,Score,IsMax);
-
-        DecisionTree = new AlberoDiDecisione(S);
+    public void BuildTree(Stato State,int depth)
+    { 
+       if(depth < 0)
+       {
+           throw new IllegalArgumentException();
+       }
+       
+       if(depth == 0)
+       {
+           State.Results = null;
+       }
+       
+       if(depth > 0)
+       {
+           for(int i=0; i<depth; i++)
+           {
+               State.GeneraSuccessore();
+               
+               System.out.println("SIZE: "+SizeOfTree(State));
+               
+               for(Stato S : State.Results)
+               {
+                   S.GeneraSuccessore();
+               }
+           }
+       }
+       
+       DecisionTree = State;
            
-        FunzioneDiValutazione(S);
+       PrintAlbero();
     }
+    
+    /*------METODI DI VALUTAZIONE E CALCOLO GUADAGNO-------*/
+    
+    public void FunzioneDiValutazione(Stato S,Carta C,int Scelta)
+    {   
+    }
+    
+    public int MinGain(Carta C)
+    {
+        double Min = C.ValoriPotenziale.get(1);
+        
+        int Index = 1;
+        
+        if(C.IsMarked())
+        {
+            for(int i=1; i<C.ValoriPotenziale.size();i++)
+            {
+                double Current = C.ValoriPotenziale.get(i);
+
+                if(Current < Min)
+                {
+                    Min = Current;
+                    Index = i;
+
+                }
+            }
+        } 
+        return Index;
+    }
+    
+    public int MaxGain(Carta C)
+    {
+        double Max = 0.0;
+        
+        int Index = 1;
+        
+        if(C.IsMarked())
+        {
+            for(int i=1; i<C.ValoriPotenziale.size();i++)
+            {
+                double Current = C.ValoriPotenziale.get(i);
+
+                if(Current > Max)
+                {
+                    Max = Current;
+                    Index = i;
+
+                }
+            }
+        }     
+        return Index;
+    }
+    
+    public void WeightSortTest(ArrayList<Carta> Carte,Punteggio Score)
+    {
+        for(Carta C : Carte)
+        {
+            System.out.println("CARTA: "+C.nome+" PESO: "+C.Weight);
+        }
+    }
+    
+    public void PrintGuadagno(Carta C)
+    {
+        System.out.println("CARTA IN ESAME: "+C.nome);
+        
+        if(C.IsMarked())
+        {     
+            for(int index=1; index<=C.Potenziale.size(); index++)
+            {
+                    System.out.println("CON IL POTENZIALE: "+index+" GUADAGNAMO: "+C.ValoriPotenziale.get(index));
+                    System.out.println("CARTE CHE VERRANNO PRESE:");
+                    C.StampaSelezione(index);
+                    System.out.println("\n\n");
+            }
+            
+            int MAX = MaxGain(C);
+            int MIN = MinGain(C);
+        
+            System.out.println("CARTA: "+C.nome+" IL MASSIMO GUADAGNO E' IN POSIZIONE: "+MAX+" E IL VALORE E': "+C.ValoriPotenziale.get(MAX)+"\n");
+            System.out.println("CARTA: "+C.nome+" IL MINIMO GUADAGNO E' IN POSIZIONE: "+MIN+" E IL VALORE E': "+C.ValoriPotenziale.get(MIN)+"\n");
+        }
+        else
+        {
+            System.out.println("CON QUESTA CARTA NON C'E' ALCUN GUADAGNO");
+            System.out.println("\n\n");
+        }
+    }  
+    /*------FINE METODI DI VALUTAZIONE E CALCOLO GUADAGNO-------*/
+    
+    /*-----METODI DI PREDIZIONE ED INFERENZA------*/
+    
+    private boolean Turn()
+    {
+        return ProcessingUnit.turn;
+    }
+
+    public void UpdateTable(ArrayList<Carta> T)
+    {
+        Table.clear();
+        Table.addAll(T);
+    }
+    
+    public void UpdateHand(ArrayList<Carta> H)
+    {
+        Hand.clear();   
+        Hand.addAll(H);
+    }
+    
+    public void UpdateKBandOpponent(KnowledgeBase K)
+    {
+        K.CopyKB(KB);
+        Opponent = KB.Carte;
+    }
+    
+    public void UpdateScore(Punteggio Sc)
+    {
+        Sc.CopyScore(Score); 
+    }
+    
+    /*-----FINE METODI DI PREDIZIONE ED INFERENZA------*/
+    
+    /*-------METODI DI STAMPA E DEBUG-------*/
     
     public String DeclarePlayer(boolean player)
     {
@@ -48,88 +188,42 @@ public class AI
         }
     }
     
-    public void FunzioneDiValutazione(Stato S)
-    {   
-        for(Carta C : S.Hand)
+    private int SizeOfTree(Stato S)
+    {
+        int sum = 0;
+
+        if(S == null)
         {
-            PrintGuadagno(C);
+            return 0;
         }
+
+        int Count = 0;
+        Count++;
+        
+        if(!S.Results.isEmpty())
+        {
+          for(Stato S1 : S.Results)
+          {
+            Count += SizeOfTree(S1);
+        }
+        }
+        
+        return Count;
     }
     
-    public void PrintGuadagno(Carta C)
-    {
-        System.out.println("CARTA IN ESAME: "+C.nome);
-        
-        if(C.IsMarked())
-        {     
-            for(int index=1; index<C.Potenziale.size(); index++)
-            {
-                System.out.println("CON IL POTENZIALE: "+index+" GUADAGNAMO: "+C.ValoriPotenziale.get(index));
-                System.out.println("CARTE CHE VERRANNO PRESE:");
-                C.StampaSelezione(index);
-                System.out.println("\n\n");
-            }
-        }
-        else
-        {
-            System.out.println("CON QUESTA CARTA NON C'E' ALCUN GUADAGNO");
-            System.out.println("\n\n");
-        }
-    }
-    
-    public Double Pesa(Carta Card,Punteggio Score,boolean IsMax)
-    {
-        //Costanti perché sempre graditi, aldilà del punteggio corrente
-        double PesoDelSettebello = 1;
-        
-        /*Contribuiscono, in base al fatto che sia necessario o meno, a decidere
-          se vale la pena di prendere questa carta*/
-        double PunteggioCarta = 0.3333;
-        double PesoDeiDenari = 0.3333;
-        double PesoInPrimiera = 0.3333;
-        
-        double Probability = 0.0;
-        
-        double WeightedValue = 0.0;
-
-        if(Card.IsSettebello())
-        {
-            System.out.println("ABBIAMO IL SETTEBELLO, 1 PUNTO");
-            WeightedValue += PesoDelSettebello;
-        }
-
-        if(Score.MaxPrimiera(Card))
-        {
-            WeightedValue += PesoInPrimiera;
-        }
-
-        /*Se ho una carta di denari e non ho ancora la certezza di avere
-        più carte di denari dell'avversario, allora la carta vale di più*/
-        if(Card.seme.equals("denari") && Score.GetDenari() <= 5)
-        {
-            System.out.println("SERVONO ALTRI DENARI, 0.33 PUNTI");
-            WeightedValue += PesoDeiDenari;
-        }
-
-         /*Se non ho ancora più carte dell'avversario, allora la carta vale di più*/
-        if(Score.GetTotal() <= 20)
-        {
-            System.out.println("SERVONO ALTRE CARTE, 0.33 PUNTI");
-            WeightedValue += PunteggioCarta;
-        }
-
-        //Punteggio Standard associato ad ogni carta
-        WeightedValue += 1.0;
-
-        System.out.println("LA CARTA: "+Card.nome+" VALE: "+WeightedValue+" IN PESO");
-
-
-        return WeightedValue*Probability;
-    }
-
     public void PrintAlbero()
     {
-        DecisionTree.StampaAlbero();
+        Stato S = DecisionTree;
+        
+        if(S == null)
+        {
+            return;
+        }
+       
+        PrintStato(S);    
+
+        System.out.println("STATI DELL'ALBERO: "+SizeOfTree(DecisionTree));
+        
     }
     
     public void PrintStato(Stato S)
@@ -139,30 +233,58 @@ public class AI
             return;
         }
         
-        System.out.println("STATO: "+S.Label);
+        System.out.println("---------STATO: "+S.Label+"---------");
         
-        System.out.println("KNOWLEDGE BASE:");
-        
-        S.Actual.KBPrint();
-        
-        System.out.println("TABLE");
-        System.out.println("\n");
-        
-        for(Carta C : S.Table)
-        {
-            System.out.print("| "+C.nome+" |");
-        }
-        
-        System.out.println("\n");
-        System.out.println("CPU HAND:");
-        
-        for(Carta C : S.Hand)
-        {
-            System.out.println("@"+C.nome+"@");
-        }
-        
-        System.out.println("I RISULTATO SONO VUOTI?: "+S.Results.isEmpty());
+        System.out.println("TURNO: "+DeclarePlayer(S.IsMax)+"\n");
 
+        //System.out.println("KNOWLEDGE BASE:");
+        
+        //S.Actual.KBPrint();
+        
+        System.out.print("TABLE: ");
+
+        if(!S.Table.isEmpty())
+        {
+            for(Carta C : S.Table)
+            {
+                System.out.print("| "+C.nome+" |");
+            }
+        }
+        else
+        {
+            System.out.println("TABLE IS EMPTY!");
+        }
+        
+        System.out.println("\n");
+        System.out.print("CPU HAND: ");
+        
+        if(!S.Hand.isEmpty())
+        {
+            for(Carta C : S.Hand)
+            {
+                System.out.print("@ "+C.nome+" @ "+"NUMERO POTENZIALI: "+C.Potenziale.size()+" ");
+            }
+        }
+        else
+        {
+            System.out.println("HAND IS EMPTY!");
+        }
+        
+        System.out.println("\n");
+
+        System.out.println("GUADAGNO: "+S.Gain);
+        
+        System.out.println("--------------------------------------------------\n");
+        
+        if(!S.Results.isEmpty())
+        {
+            for(Stato S1: S.Results)
+            {
+                PrintStato(S1);
+            }
+        }
     }
+    
+     /*-------FINE METODI DI STAMPA E DEBUG-------*/
     
 }

@@ -1,6 +1,7 @@
 package assopigliatutto;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Random;
 
 public class CPU extends Giocatore
@@ -11,7 +12,7 @@ public class CPU extends Giocatore
     
     KnowledgeBase KB;
     
-    AI Intelligence = new AI(this);
+    AI Intelligence;
 
     public CPU(String n, boolean decision, Gioco g, ArrayList<Carta> Tavolo) 
     {
@@ -19,7 +20,9 @@ public class CPU extends Giocatore
         
         Sessione = g;
         
-        KB = new KnowledgeBase(); 
+        KB = new KnowledgeBase(this); 
+        
+        Intelligence = new AI(this);
     }
     
     public synchronized void GiocaACaso()
@@ -73,10 +76,25 @@ public class CPU extends Giocatore
         
     }
     
-    public synchronized void Plan()
+    public synchronized Stato Observe()
     {
-        Intelligence.BuildTree();
-   }
+        Stato S = new Stato("ATTUALE",Table,mano,KB,points,turn);
+        
+        return S;
+    }
+    
+    public synchronized void Plan(Stato S)
+    {
+        if(!mano.isEmpty())
+        {
+            Intelligence.BuildTree(S,2);
+        }
+    }
+    
+    public synchronized void Act()
+    {
+        
+    }
     
     @Override
     public synchronized void PickHand(ArrayList<Carta> Mazzo)
@@ -106,7 +124,8 @@ public class CPU extends Giocatore
                 try
                 {
                     Thread.sleep(1000);
-                    Plan();
+                    Stato S = Observe();
+                    Plan(S);
                     GiocaACaso();
                 }
                 catch(InterruptedException e)

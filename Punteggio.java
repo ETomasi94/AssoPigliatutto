@@ -164,6 +164,12 @@ public class Punteggio
     
     public void CopyScore(Punteggio Dest)
     {
+        if(Dest == null)
+        {
+            System.out.println("CREANDO UN NUOVO PUNTEGGIO: ");
+            Dest = new Punteggio();
+        }
+        
         Dest.Total = Total;
         Dest.CarteOttenute = CarteOttenute;
         Dest.Denari = Denari;

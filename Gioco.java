@@ -129,7 +129,7 @@ public final class Gioco extends Thread
         {
             Collections.sort(Tavolo);
             
-            Test.ConfigurazioneCritica(Tavolo);
+            Test.AceTest(Tavolo);
             
             Turn = ControllaTurno();
         }
@@ -295,7 +295,7 @@ public final class Gioco extends Thread
         {
             System.out.println("E' il turno del giocatore\n");
             
-            VisualizzaTurno();
+            //VisualizzaTurno();
             
             return false;
         }

@@ -2,6 +2,7 @@ package assopigliatutto;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -74,6 +75,9 @@ public class TesterDebugger
     
     public void TestConf()
     {
+        RandomHand(P1);
+        RandomHand(Computer);
+        
         Tv.remove(3);
         Tv.add(3,new Carta('s',P1.GetMano().get(0).GetValue()));
         Tv.add(4,new Carta('c',P1.GetMano().get(0).GetValue()));
@@ -198,6 +202,8 @@ public class TesterDebugger
         int Value2 = (int) Math.ceil(Value1 / 2);
         int Value3 = (int) Math.ceil(Value1 / 3);
         
+        RandomHand(Computer);
+        
         System.out.println("VALUE1: "+Value1+" VALUE2: "+Value2+" VALUE3: "+Value3);
         
         Tv.add(new Carta('d',Value1));
@@ -222,6 +228,8 @@ public class TesterDebugger
         P1.mano.add(0,C1);  
         P1.mano.add(1,C2);  
         P1.mano.add(2,C3);
+        
+        RandomHand(Computer);
         
         Tav.clear();
         
@@ -250,6 +258,8 @@ public class TesterDebugger
         P1.mano.add(0,C1);     
         P1.mano.add(1,C2);
         P1.mano.add(2,C3);
+        
+        RandomHand(Computer);
         
         Tav.add(new Carta('c',5));
         Tav.add(new Carta('b',5));
@@ -289,6 +299,8 @@ public class TesterDebugger
         P1.mano.add(0,C1);      
         P1.mano.add(1,C2);    
         P1.mano.add(2,C3);
+        
+        RandomHand(Computer);
         
         Tav.add(new Carta('s',10));
         Tav.add(new Carta('d',7));
@@ -452,6 +464,37 @@ public class TesterDebugger
         Sessione.Halt();
     }
     
+    public void AITest(ArrayList<Carta> Tav)
+    {
+        ClearCards(Tav);
+        
+        Carta C1 = new Carta('d',8);
+        Carta C2 = new Carta('s',5);
+        Carta C3 = new Carta('d',10);
+        
+        Carta C4 = new Carta('c',8); 
+        Carta C5 = new Carta('c',5);
+        Carta C6 = new Carta('b',4);
+        Carta C7 = new Carta('s',3);
+        
+        Carta C8 = new Carta('c',3);
+        Carta C9 = new Carta('c',9);
+        Carta C10 = new Carta('b',5);
+        
+        Computer.mano.add(C1);
+        Computer.mano.add(C2);
+        Computer.mano.add(C3);
+        
+        Tav.add(C4);
+        Tav.add(C5);
+        Tav.add(C6);
+        Tav.add(C7);
+        
+        P1.mano.add(C8);
+        P1.mano.add(C9);
+        P1.mano.add(C10);
+    }
+    
     public void ClearCards(ArrayList<Carta> Tav)
     {
           if(!Tav.isEmpty())
@@ -468,5 +511,34 @@ public class TesterDebugger
             {
                 P1.mano.clear();
             }
+    }
+    
+    public Carta GeneraRandom()
+    {
+        int indice, valore = 0;
+        
+        char seme;
+        
+        Random R = new Random();
+        
+        char[] S = {'s','c','b','d'};
+        
+        indice = R.nextInt(4);
+        
+        seme = S[indice];
+        valore = 1 + R.nextInt(10);
+        
+        Carta C = new Carta(seme,valore);
+
+        return C;
+    }
+    
+    public void RandomHand(Giocatore G)
+    {
+        G.mano.clear();
+        
+        G.mano.add(0,GeneraRandom());
+        G.mano.add(1,GeneraRandom());
+        G.mano.add(2,GeneraRandom());
     }
 }

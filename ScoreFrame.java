@@ -1,33 +1,76 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+ASSO PIGLIATUTTO
+PROGETTO DI ESPERIENZE DI PROGRAMMAZIONE A.A 2019-2020
+
+AUTORE : ENRICO TOMASI
+NUMERO DI MATRICOLA: 503527
+
+OVERVIEW: Implementazione di un tipico gioco di carte italiano in cui il computer
+pianifica le mosse ed agisce valutando mediante ricerca in uno spazio di stati
+*/
 package assopigliatutto;
 
 import java.awt.Color;
 
-/**
- *
- * @author Enrico Tomasi
- */
-public class ScoreFrame extends javax.swing.JFrame {
+/*
+    @CLASS ScoreFrame
 
-    Punteggio ScorePlayer;
-    Punteggio ScoreCPU;
+    @OVERVIEW Classe che implementa la finestra relativa alla visualizzazione dei punteggi
+              con le sue proprietà ed i suoi comportamenti
+*/
+public class ScoreFrame extends javax.swing.JFrame 
+{
+    /*----VARIABILI D'ISTANZA----*/
     
-    Gioco Sessione;
+    Punteggio ScorePlayer;//Punteggio del giocatore
+    Punteggio ScoreCPU;//Punteggio della CPU
+    
+    Gioco Sessione;//Sessione di gioco corrente
+    
+    /*----FINE VARIABILI D'ISTANZA----*/
+    
+    /*----METODO COSTRUTTORE----*/
 
+    /*
+        @METHOD ScoreFrame
+        
+        @OVERVIEW Metodo che costruisce un'istanza della classe ScoreFrame inizializzando
+                  le sue componenti
+    
+        @RETURNS Frame : Istanza della classe ScoreFrame rappresentante la finestra di visualizzazione
+                 punteggi corrente
+    */
     public ScoreFrame() 
     {
         initComponents();
     }
     
+    /*----FINE METODO COSTRUTTORE----*/
+    
+    /*----METODI DI MODIFICA DELLA FINESTRA----*/
+    
+    /*
+        @METHOD SetGioco
+    
+        @OVERVIEW Metodo che imposta la sessione di gioco corrente ad un'istanza
+                  della classe gioco data in input
+    
+        @PAR G : Istanza della classe Gioco rappresentante la sessione di gioco corrente
+    */
     public void SetGioco(Gioco G)
     {
         Sessione = G;
     }
     
+    /*
+        @METHOD DisplayScores
+    
+        @OVERVIEW Metodo che visualizza i punteggi degli avversari all'interno della
+                  finestra dell'istanza della classe in questione
+    
+        @PAR SPlayer : Punteggio corrente del giocatore
+        @PAR SCPU : Punteggio corrente della CPU
+    */
     public void DisplayScores(Punteggio SPlayer,Punteggio SCPU)
     {
         ScorePlayer = SPlayer;
@@ -49,6 +92,15 @@ public class ScoreFrame extends javax.swing.JFrame {
         PrimieraOfCPU.setText(""+ScoreCPU.GetPrimiera());
     }
     
+    /*
+        @METHOD Settebello
+    
+        @OVERVIEW Metodo che stampa, in base alla variabile d'istanza relativa alla presa del
+                  Settebello da parte del giocatore contenuta nel punteggio ad egli associato
+                  una stringa rappresentante il fatto che il Settebello sia stato preso o meno
+    
+        @PAR Score : Punteggio relativamente a cui dichiarare la presa o meno del settebello
+    */
     private String Settebello(Punteggio Score)
     {
         String result;
@@ -65,6 +117,14 @@ public class ScoreFrame extends javax.swing.JFrame {
         return result;
     }
     
+    /*
+        @METHOD SetWinnerLabel
+    
+        @OVERVIEW Metodo che consente la visualizzazione di una stringa che denota
+                  quale avversario ha vinto la partita o se c'è stato un pareggio
+    
+        @PAR nome : Nome dell'avversario che ha vinto la partita (uguale a "DRAW" in caso di pareggio)
+     */
     public void SetWinnerLabel(String nome)
     {
         String text = "";
@@ -86,6 +146,10 @@ public class ScoreFrame extends javax.swing.JFrame {
         
         WinnerLabel.setText(text);
     }
+    
+    /*----FINE METODI DI MODIFICA DELLA FINESTRA----*/
+    
+    /*----METODI DI INTERAZIONE CON L'INTERFACCIA----*/
 
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -290,7 +354,7 @@ public class ScoreFrame extends javax.swing.JFrame {
                 .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(ScoreFramePanelLayout.createSequentialGroup()
                         .addContainerGap()
-                        .addComponent(Titolo, javax.swing.GroupLayout.DEFAULT_SIZE, 1276, Short.MAX_VALUE))
+                        .addComponent(Titolo, javax.swing.GroupLayout.DEFAULT_SIZE, 1280, Short.MAX_VALUE))
                     .addGroup(ScoreFramePanelLayout.createSequentialGroup()
                         .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(ScoreFramePanelLayout.createSequentialGroup()
@@ -367,7 +431,7 @@ public class ScoreFrame extends javax.swing.JFrame {
                     .addComponent(PrimieraOfPlayer, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(PrimieraOfCPU, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(WinnerLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 78, Short.MAX_VALUE)
+                .addComponent(WinnerLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 82, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(QuitButton, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -394,24 +458,46 @@ public class ScoreFrame extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void QuitButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_QuitButtonActionPerformed
-        // TODO add your handling code here:
+
     }//GEN-LAST:event_QuitButtonActionPerformed
 
     private void BackToMenuButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BackToMenuButton1ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_BackToMenuButton1ActionPerformed
 
+    }//GEN-LAST:event_BackToMenuButton1ActionPerformed
+    /**
+     * @METHOD QuitButtonMousePressed
+     * @OVERVIEW Metodo che implementa il comportamento della finestra di visualizzazione
+     *           dei punteggi al momento della pressione del bottone QuitButton ("ESCI") e la
+     *           conseguente chiusura del gioco
+     */
     private void QuitButtonMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_QuitButtonMousePressed
         Sessione.Halt();
         this.dispose();
     }//GEN-LAST:event_QuitButtonMousePressed
-
+/**
+ * @METHOD BackToMenuButton1MousePressed
+ * @OVERVIEW Metodo che implementa il comportamento della finestra di visualizzazione dei punteggi
+ *           al momento della pressione del bottone BackToMenuButton1 ("TORNA AL MENU") e il conseguente
+ *           ritorno al menu iniziale di gioco
+ * 
+ */
     private void BackToMenuButton1MousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_BackToMenuButton1MousePressed
         Menu menu = new Menu();
         menu.setVisible(true);
         this.dispose();
     }//GEN-LAST:event_BackToMenuButton1MousePressed
 
+    /*----FINE METODI DI INTERAZIONE CON L'INTERFACCIA----*/
+    
+    /*----METODI DEL CICLO DI VITA DEL THREAD----*/
+    
+    /**
+     * @METHOD main
+     * 
+     * @OVERVIEW Metodo che implementa il ciclo di vita principale della finestra di visualizzazione
+     *           dei punteggi
+     * 
+    */
     public static void main(String args[]) {
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
@@ -443,6 +529,8 @@ public class ScoreFrame extends javax.swing.JFrame {
             }
         });
     }
+    
+    /*----FINE METODI DEL CICLO DI VITA DEL THREAD----*/
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton BackToMenuButton1;

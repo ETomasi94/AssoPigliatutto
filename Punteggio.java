@@ -27,6 +27,10 @@ public class Punteggio
     int Scope;
     boolean Settebello;
     int Primiera;
+          
+    int[] PrimieraValues = {16,12,13,14,15,18,21,10,10,10};
+    
+    ArrayList<Carta> MaximumPrimieraCards = new ArrayList();
     
     ArrayList<Carta> CarteOttenute;
     
@@ -83,7 +87,6 @@ public class Punteggio
         
                 
         Total = CarteOttenute.size();
-        
     }
     
     /*
@@ -111,7 +114,7 @@ public class Punteggio
     */
     public boolean MaxPrimiera(Carta Max)
     {
-        boolean result = false;
+        boolean result = true;
         
         for(Carta C : CarteOttenute)
         {
@@ -122,10 +125,17 @@ public class Punteggio
 
                    if(v2 > v1)
                    {
-                       result = true;
+                       result = false;
                    }
             }
         }
+        
+
+            for(Carta C : MaximumPrimieraCards)
+            {
+                System.out.println("PRIMIERA CARD: "+C.nome);
+            }
+
         
         return result;
     }
@@ -149,86 +159,88 @@ public class Punteggio
         Carta MaxDenari = null;
         Carta MaxCoppe = null;
         
-        for(Carta C : CarteOttenute)
+        if(!CarteOttenute.isEmpty())
         {
-          switch(C.seme)
-          {
-              case "spade":
-                  if(MaxSpade == null)
-                  {
-                      MaxSpade = C;
-                  }
-                  else
-                  {
-                      int v1 = MaxSpade.GetPrimieraValue();
-                      int v2 = C.GetPrimieraValue();
-                      
-                      if(v2 > v1)
+            for(Carta C : CarteOttenute)
+            {
+              switch(C.seme)
+              {
+                  case "spade":
+                      if(MaxSpade == null)
                       {
                           MaxSpade = C;
                       }
-                  }
-                  break;
-              case "bastoni":
-                  if(MaxBastoni == null)
-                  {
-                      MaxBastoni = C;
-                  }
-                  else
-                  {
-                      int v1 = MaxBastoni.GetPrimieraValue();
-                      int v2 = C.GetPrimieraValue();
-                      
-                      if(v2 > v1)
+                      else
+                      {
+                          int v1 = MaxSpade.GetPrimieraValue();
+                          int v2 = C.GetPrimieraValue();
+
+                          if(v2 > v1)
+                          {
+                              MaxSpade = C;
+                          }
+                      }
+                      break;
+                  case "bastoni":
+                      if(MaxBastoni == null)
                       {
                           MaxBastoni = C;
                       }
-                  }
-                  break;
-              case "denari":
-                  if(MaxDenari == null)
-                  {
-                      MaxDenari = C;
-                  }
-                  else
-                  {
-                      int v1 = MaxDenari.GetPrimieraValue();
-                      int v2 = C.GetPrimieraValue();
-                      
-                      if(v2 > v1)
+                      else
+                      {
+                          int v1 = MaxBastoni.GetPrimieraValue();
+                          int v2 = C.GetPrimieraValue();
+
+                          if(v2 > v1)
+                          {
+                              MaxBastoni = C;
+                          }
+                      }
+                      break;
+                  case "denari":
+                      if(MaxDenari == null)
                       {
                           MaxDenari = C;
                       }
-                  }
-                  break;
-              case "coppe":
-                  if(MaxCoppe == null)
-                  {
-                      MaxCoppe = C;
-                  }
-                  else
-                  {
-                      int v1 = MaxCoppe.GetPrimieraValue();
-                      int v2 = C.GetPrimieraValue();
-                      
-                      if(v2 > v1)
+                      else
+                      {
+                          int v1 = MaxDenari.GetPrimieraValue();
+                          int v2 = C.GetPrimieraValue();
+
+                          if(v2 > v1)
+                          {
+                              MaxDenari = C;
+                          }
+                      }
+                      break;
+                  case "coppe":
+                      if(MaxCoppe == null)
                       {
                           MaxCoppe = C;
                       }
-                  }
-                  break;
-              default:
-                  throw new IllegalArgumentException();
-          }
+                      else
+                      {
+                          int v1 = MaxCoppe.GetPrimieraValue();
+                          int v2 = C.GetPrimieraValue();
+
+                          if(v2 > v1)
+                          {
+                              MaxCoppe = C;
+                          }
+                      }
+                      break;
+                  default:
+                      throw new IllegalArgumentException();
+              }
+            }
+
+            if(MaxSpade != null && MaxBastoni != null && MaxDenari != null && MaxCoppe != null)
+            {
+                TotalPoints = MaxSpade.GetPrimieraValue() + MaxBastoni.GetPrimieraValue() + MaxDenari.GetPrimieraValue() + MaxCoppe.GetPrimieraValue();
+            }
+
+            
         }
-        
-        System.out.println("CARTE CANDIDATE PER LA PRIMIERA:");
-        System.out.println(MaxSpade.GetName());
-        System.out.println(MaxBastoni.GetName());
-        System.out.println(MaxDenari.GetName());
-        System.out.println(MaxCoppe.GetName());
-        
-        TotalPoints = MaxSpade.GetPrimieraValue() + MaxBastoni.GetPrimieraValue() + MaxDenari.GetPrimieraValue() + MaxCoppe.GetPrimieraValue();
         
         return TotalPoints;
     }
@@ -347,6 +359,24 @@ public class Punteggio
         return Primiera;
     }
     
+    public Punteggio GetOpponentScore()
+    {   
+        Punteggio OpponentScore = new Punteggio();
+        
+            OpponentScore.Denari = 10 - Denari;
+
+            OpponentScore.Settebello = !Settebello;
+
+            OpponentScore.Total = 40 - Total;
+
+            OpponentScore.Scope = Scope;
+
+            OpponentScore.Primiera = 64 - GetPrimiera();
+
+            
+        return OpponentScore;
+    }
+    
     /*
         @METHOD SetCount 
     
@@ -433,6 +463,20 @@ public class Punteggio
         System.out.println("SETTEBELLO : "+Settebello+"\n");
         System.out.println("PRIMIERA: "+Primiera+"\n");
         System.out.println("CARTE OTTENUTE:");
+        
+        /*
+        if(!CarteOttenute.isEmpty())
+        {
+            for(Carta C : CarteOttenute)
+            {
+                System.out.println("-- "+C.nome);
+            }
+        }
+        else
+        {
+            System.out.println("**NESSUNA CARTA OTTENUTA**");
+        }
+        */
     }
     
     /*----FINE METODI DI STAMPA E DEBUG----*/

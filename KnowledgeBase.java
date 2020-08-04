@@ -13,7 +13,6 @@ package assopigliatutto;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.PriorityQueue;
 
 /*
@@ -484,10 +483,10 @@ public class KnowledgeBase
             
             for(int i=0; i<PlayerCards; i++)
             {
-                Res.add(Carte.poll());
+                Res.add(Carte.peek());
             }
         }
-        
+
         return Res;
     }
     

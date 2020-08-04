@@ -172,14 +172,13 @@ public class TesterDebugger
      *              -VMAX = Valore massimo delle carte presenti nella mano del giocatore (parte intera superiore)
      * 
      *           CARTE SUL TAVOLO:
-     *              - | Denari , (VMAX) | 
      * 
      *              - | Bastoni , (VMAX/2) |
      *              - | Coppe , ( (VMAX) - (VMAX/2)) |
      * 
      *              - | Bastoni , (VMAX / 3) |
      *              - | Coppe , (VMAX / 3) |
-     *              - | Denari , (VMAX) - (VMAX / 3) |
+     *              - | Denari , (VMAX) - 2*(VMAX / 3) |
      * 
      *           MANO DELLA CPU:
      *              *Carte distribuite casualmente*
@@ -225,8 +224,6 @@ public class TesterDebugger
      *              - | Spade , 10 |
      *              - | Bastoni , 10 |
      *              
-     *              -VMAX = Valore massimo delle carte presenti nella mano del giocatore (parte intera superiore)
-     * 
      *           CARTE SUL TAVOLO:
      *               -| Coppe , 5 |
      *               -| Denari , 5 |
@@ -265,6 +262,72 @@ public class TesterDebugger
         P1.mano.add(2,C3);
         
         RandomHand(Computer);
+        
+        Tav.clear();
+        
+        Tav.add(new Carta('c',5));
+        Tav.add(new Carta('d',5));
+        Tav.add(new Carta('s',5));
+        Tav.add(new Carta('b',5));
+        Tav.add(new Carta('c',3));
+        Tav.add(new Carta('d',3));
+        Tav.add(new Carta('s',3));
+        Tav.add(new Carta('b',1));
+        Tav.add(new Carta('c',2));
+        Tav.add(new Carta('s',2));
+        
+        Collections.sort(Tav);
+    }
+    
+     /**
+     * @METHOD MaxCombinationConf
+     * 
+     * @OVERVIEW Metodo che configura il gioco nel seguente modo:
+     * 
+     *           MANO DEL GIOCATORE:
+     *              *Carte distribuite casualmente*
+     *              
+     *           CARTE SUL TAVOLO:
+     *               -| Coppe , 5 |
+     *               -| Denari , 5 |
+     *               -| Spade , 5 |
+     *               -| Bastoni , 5 |
+     *               -| Coppe , 3 |
+     *               -| Denari , 3 |
+     *               -| Spade , 3 |
+     *               -| Bastoni , 1 |
+     *               -| Coppe , 2 |
+     *               -| Spade , 2|
+     * 
+     *           MANO DELLA CPU:
+     *              - | Denari , 10 |
+     *              - | Spade , 10 |
+     *              - | Bastoni , 10 |
+     *     
+     * 
+     * La configurazione viene utilizzata principalmente per determinare qual è, dato il modo in cui il tavolo è stato configurato
+     * il massimo numero di stati generati dallo stato attuale quando sul tavolo sono state gettate tutte le carte
+     * delle mani degli avversari durante la mano precedente e non sono state effettuate prese (caso molto improbabile 
+     * ma che lo sviluppatore ha ritenuto opportuno considerare)
+     *
+     */
+    public void MaxCombinationConfAI()
+    {
+        Carta C1 = new Carta('d',10);
+        Carta C2 = new Carta('s',10);
+        Carta C3 = new Carta('b',10);
+        
+        Mz.remove(C1);
+        Mz.remove(C2);
+        Mz.remove(C3);
+
+        ClearCards();
+        
+        Computer.mano.add(0,C1);  
+        Computer.mano.add(1,C2);  
+        Computer.mano.add(2,C3);
+        
+        RandomHand(P1);
         
         Tav.clear();
         
@@ -690,7 +753,7 @@ public class TesterDebugger
     {   
         /*CASO 0-A: La tavola è vuota (se le mani del giocatore o della CPU sono vuote è banale 
                   il fatto che i due giocatori non possano prendere carte)*/
-        System.out.println("-----TEST DFS, CASO 0-A: TAVOLO VUOTO----");
+        System.out.println("---TEST DFS, CASO 0-A: TAVOLO VUOTO---");
         
         EmptyTableConfiguration();
         
@@ -712,14 +775,14 @@ public class TesterDebugger
             C.StampaPotenziali();
         }
         
-        System.out.println("---------------------------------------------------\n");
+        System.out.println("----------\n");
         
         SpaceOutputConsole();
         
         PauseBetweenTests();
         
         /*CASO 0-B: Nessuna presa effettuabile da parte della CPU o del giocatore*/
-        System.out.println("-----TEST DFS, CASO 0-B: NESSUNA PRESA POSSIBILE----");
+        System.out.println("---TEST DFS, CASO 0-B: NESSUNA PRESA POSSIBILE---");
         
         NoPotentialsConfiguration();
         
@@ -741,14 +804,14 @@ public class TesterDebugger
             C.StampaPotenziali();
         }
         
-        System.out.println("---------------------------------------------------\n");
+        System.out.println("----------\n");
         
         PauseBetweenTests();
         
         SpaceOutputConsole();
          
         /*CASO 1: Il giocatore può prendere unicamente carte dello stesso valore all'interno del tavolo di gioco*/
-        System.out.println("-----TEST DFS, CASO 1: CARTE DELLO STESSO VALORE----");
+        System.out.println("---TEST DFS, CASO 1: CARTE DELLO STESSO VALORE---");
 
         IdemConfiguration();
         
@@ -770,14 +833,14 @@ public class TesterDebugger
             C.StampaPotenziali();
         }
         
-        System.out.println("---------------------------------------------------\n");
+         System.out.println("----------\n");
         
         PauseBetweenTests();
         
         SpaceOutputConsole();
         
        /*CASO 2: Il giocatore può prendere unicamente gli assi all'interno del tavolo di gioco*/ 
-        System.out.println("-----TEST DFS, CASO 2: ASSO PIGLIA ASSO----");
+        System.out.println("---TEST DFS, CASO 2: ASSO PIGLIA ASSO---");
         
         AceConfiguration();
         
@@ -799,14 +862,14 @@ public class TesterDebugger
             C.StampaPotenziali();
         }
         
-        System.out.println("---------------------------------------------------\n");
+        System.out.println("----------\n");
         
         PauseBetweenTests();
         
         SpaceOutputConsole();
         
         /*CASO 3: Il giocatore può prendere tutte le carte sul tavolo grazie ad un asso all'interno della sua mano*/
-        System.out.println("-----TEST DFS, CASO 3: ASSO PIGLIA TUTTO----");
+        System.out.println("---TEST DFS, CASO 3: ASSO PIGLIA TUTTO---");
         System.out.println("Non ci sono assi in campo, quindi un asso può prendere tutte le carte");
         
         ReverseAceConfiguration();
@@ -829,7 +892,7 @@ public class TesterDebugger
             C.StampaPotenziali();
         }
         
-        System.out.println("---------------------------------------------------\n");
+        System.out.println("----------\n");
         
         PauseBetweenTests();
         
@@ -837,7 +900,7 @@ public class TesterDebugger
         
         /*CASO 4: Configurazione con insiemi rispettivamente di due e di tre carte come prese possibili dalla carta di 
                   valore massimo*/
-        System.out.println("-----TEST DFS, CASO 4: CONFIGURAZIONE STANDARD----");
+        System.out.println("---TEST DFS, CASO 4: CONFIGURAZIONE STANDARD---");
         
         IdealCombinationConf();
         
@@ -859,14 +922,14 @@ public class TesterDebugger
             C.StampaPotenziali();
         }
         
-        System.out.println("---------------------------------------------------\n");
+        System.out.println("----------\n");
         
         PauseBetweenTests();
         
         SpaceOutputConsole();
         
         /*CASO 5: Stress-test con la configurazione che genera il numero massimo di prese possibili*/
-        System.out.println("-----TEST DFS, CASO 5: CONFIGURAZIONE STRESSING----");
+        System.out.println("---TEST DFS, CASO 5: CONFIGURAZIONE STRESSING---");
         System.out.println("Questa configurazione mostra il limite di configurazioni possibili all'interno del gioco");
         
         MaxCombinationConf();
@@ -889,7 +952,7 @@ public class TesterDebugger
             C.StampaPotenziali();
         }
         
-        System.out.println("---------------------------------------------------\n");
+        System.out.println("----------\n");
         
         PauseBetweenTests();
         
@@ -908,7 +971,7 @@ public class TesterDebugger
     public void AITest()
     {
         /*CASO 0: Generazione degli stati in una tavola vuota, uno stato con guadagno nullo*/
-         System.out.println("-----TEST AI, CASO 0: TAVOLA VUOTA----");
+         System.out.println("---TEST AI, CASO 0: TAVOLA VUOTA---");
          
          EmptyTableConfiguration();
          
@@ -920,14 +983,14 @@ public class TesterDebugger
          
          PrintDecisionTree();
          
-        System.out.println("---------------------------------------------------\n");       
+        System.out.println("----------\n");    
                 
         SpaceOutputConsole();
         
         PauseBetweenTests();
 
         /*CASO 1: Generazione degli stati con la mano della CPU vuota, uno stato con guadagno nullo*/
-        System.out.println("-----TEST AI, CASO 1: MANO CPU VUOTA----");
+        System.out.println("---TEST AI, CASO 1: MANO CPU VUOTA---");
          
         EmptyCPUHandConfiguration();
          
@@ -939,14 +1002,14 @@ public class TesterDebugger
         
         PrintDecisionTree();
          
-        System.out.println("---------------------------------------------------\n");
+        System.out.println("----------\n");
                       
         SpaceOutputConsole();      
         
         PauseBetweenTests();
         
         /*CASO 2: Generazione degli stati con la mano del giocatore vuota, tre stati con relativo guadagno*/
-        System.out.println("-----TEST AI, CASO 2: MANO GIOCATORE VUOTA----");
+        System.out.println("---TEST AI, CASO 2: MANO GIOCATORE VUOTA---");
          
         EmptyPlayerHandConfiguration();
          
@@ -958,14 +1021,14 @@ public class TesterDebugger
         
         PrintDecisionTree();
          
-        System.out.println("---------------------------------------------------\n");      
+        System.out.println("----------\n");     
                 
         SpaceOutputConsole();      
         
         PauseBetweenTests();
         
         /*CASO 3: Generazione dell'albero degli stati in una configurazione standard*/
-        System.out.println("----TEST AI, CASO 3: CONFIGURAZIONE STANDARD");
+        System.out.println("---TEST AI, CASO 3: CONFIGURAZIONE STANDARD---");
         
         AIConfiguration();
         
@@ -977,16 +1040,16 @@ public class TesterDebugger
         
         PrintDecisionTree();
          
-        System.out.println("---------------------------------------------------\n");        
+        System.out.println("----------\n");
                 
         SpaceOutputConsole();      
         
         PauseBetweenTests();
         
         /*CASO 4: Stress-test, generazione dell'albero degli stati nella configurazione che genera il massimo potenziale*/
-        System.out.println("----TEST AI, CASO 4: CONFIGURAZIONE STRESSING");
+        System.out.println("---TEST AI, CASO 4: CONFIGURAZIONE STRESSING---");
         
-        MaxCombinationConf();
+        MaxCombinationConfAI();
         
         Sessione.RivalutaPotenziale();
         
@@ -1451,15 +1514,15 @@ public class TesterDebugger
     {
         if(CardSet.isEmpty())
         {
-            System.out.println("      "+Title+" è vuoto");
+            System.out.println("-"+Title+"\n*VUOTO*");
         }
         else
         {
-        System.out.println("      "+Title+"\n");
+        System.out.println("-"+Title+"");
         
         for(Carta C : CardSet)
         {
-            System.out.print("| "+C.nome+" |");
+            System.out.println("[ "+C.nome+" ]");
         }
         }
         
@@ -1493,20 +1556,11 @@ public class TesterDebugger
         System.out.println("----------------------------------------------------------------------------------------------------\n");
         System.out.println("----STAMPA DELL'ALBERO DI GIOCO GENERATO DAL COMPUTER----\n");
         System.out.println("-NUMERO DI STATI: "+Computer.Intelligence.SizeOfDecisionTree());
-        
-        Stato DecisionTree = Computer.Intelligence.DecisionTree;
-        
+
         Computer.Intelligence.SintesiAlberoDiDecisione();
         
         Double Gain = Computer.Intelligence.MaxGain;
-        
-        String EstablishedState = Computer.Intelligence.EstablishedLabel;
-        int EstablishedCard = Computer.Intelligence.EstablishedCard;
-        int EstablishedPotential = Computer.Intelligence.EstablishedPotential;
-        
-        System.out.println("MASSIMO GUADAGNO: "+Gain+" NELLO STATO: "+EstablishedState);
-        System.out.println("STATO OTTENUTO SCEGLIENDO LA CARTA: "+EstablishedCard+" CON LA COMBINAZIONE: "+EstablishedPotential);
-        
+
         System.out.println("----------------------------------------------------------------------------------------------------");
     }
     

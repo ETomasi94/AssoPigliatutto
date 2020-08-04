@@ -740,8 +740,10 @@ public class Carta implements Comparable<Carta>
 
                 for(Carta c : E.getValue())
                 {
-                    System.out.println(" | "+c.GetName()+" |");
+                    System.out.println(" [ "+c.GetName()+" ]");
                 }
+                
+                System.out.println("\n");
             }
        }
        else

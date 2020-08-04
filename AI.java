@@ -29,6 +29,10 @@ public class AI
     int EstablishedPotential;//Combinazione associata alla presa con maggio guadagno possibile giocando la carta migliore
     String EstablishedLabel;//Etichetta che caratterizza lo stato in cui la CPU guadagna maggiormente
     
+    String EstablishedTurn;//Etichetta per indicare in che turno si trova lo stato di massimo guadagno
+    
+   double EstablishedGain;
+    
     /*----FINE VARIABILI D'ISTANZA----*/
 
     /*----METODO COSTRUTTORE----*/
@@ -46,6 +50,7 @@ public class AI
         MaxGain = 0.0;
         EstablishedCard = 0;
         EstablishedPotential = 0;
+        EstablishedGain = 0.0;
         EstablishedLabel = "ATTUALE";
         DecisionTree = null;
     }
@@ -86,7 +91,7 @@ public class AI
        */
        if(depth > 0)
        {
-           State.GeneraSuccessore(depth);     
+           State.GeneraSuccessore(depth,true);     
        }
        
        /*
@@ -114,38 +119,43 @@ public class AI
                         di punteggio che il giocatore può effettuare giocando una delle sue carte ed effettuando
                         la miglior presa ad essa associata      
     */
-    public double MiniMaxAlfaBetaPruning(Stato state,int depth,double alpha,double beta,boolean Player)
+    public double MiniMaxAlfaBetaPruning(Stato state,int depth,double alpha,double beta,boolean IsTurn)
     {
         /*----DICHIARAZIONE DELLE VARIABILI INTERNE AL METODO----*/
         
         double Max; 
         double Min; 
 
-        double GlobalGain = 0.0;
-        
-        
         /*CASO BASE: PROFONDITA' NULLA O NODO FOGLIA*/
         /*Vengono registrati la carta associata a quello stato, il relativo
           potenziale, l'etichetta dello stato ed il guadagno associato
         */
            if(depth == 0 || state.Results.isEmpty())
-           {
-                   EstablishedCard = state.SuggestedCard;
-                   EstablishedPotential = state.SuggestedPotential;
-                   EstablishedLabel = state.Label;
-                   GlobalGain += state.Gain;
-                   return GlobalGain;
+           {            
+                if(state.IsMax)
+                {
+                    EstablishedTurn = "CPU";
+                }
+                else
+                {
+                    EstablishedTurn = "Player";
+                }
+                
+                EstablishedCard = state.SuggestedCard;
+                EstablishedPotential = state.SuggestedPotential;
+                EstablishedLabel = state.Label;
+                EstablishedGain = state.Gain;
+
+                return state.Gain;
            }
 
-           if(Player)
+           if(IsTurn)
            {   
               Max = Double.NEGATIVE_INFINITY;
 
               for(Stato S : state.Results)
               {
                   double Evaluation = MiniMaxAlfaBetaPruning(S, depth-1, alpha, beta,false); 
-
-                  S.Label = S.Label.concat("    |CI GUADAGNA LA CPU|     ");
 
                   Max = Math.max(Max,Evaluation);
 
@@ -159,7 +169,7 @@ public class AI
 
                return Max;
            }
-           else// for Minimizer player 
+           else
            {          
               Min = Double.POSITIVE_INFINITY; 
 
@@ -167,11 +177,9 @@ public class AI
               {
                    double Evaluation =  MiniMaxAlfaBetaPruning(S, depth-1, alpha, beta,true);  
 
-                   S.Label = S.Label.concat("    |CI GUADAGNA IL GIOCATORE|     ");
-
                    Min = Math.min(Min,Evaluation);
 
-                   beta = Math.min(beta,Evaluation);
+                   beta = Math.min(beta,Min);
 
                    if(beta <= alpha)
                    {
@@ -196,6 +204,8 @@ public class AI
     public double Decide(int depth)
     {
         MaxGain = MiniMaxAlfaBetaPruning(DecisionTree,depth,Double.NEGATIVE_INFINITY,Double.POSITIVE_INFINITY,DecisionTree.IsMax);
+
+        System.out.println("MASSIMO GUADAGNO: "+EstablishedGain+" CARTA: "+EstablishedCard+" PRESA: "+EstablishedPotential+ " STATO: "+EstablishedLabel+" TURNO: "+EstablishedTurn);
 
         return MaxGain;
     }
@@ -374,7 +384,7 @@ public class AI
     }
     
     /*
-        @METHOD PrintGuadagniAlbero
+        @METHOD SintesiAlberoDiDecisione
     
         @OVERVIEW Metodo che visita ricorsivamente l'albero stampando le informazioni
                   essenziali dei nodi in maniera sintetica

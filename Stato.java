@@ -29,6 +29,8 @@ public final class Stato
     ArrayList<Carta> Hand;//Mano del giocatore nello stato in questione
     
     ArrayList<Carta> Opponent;//Mano dell'avversario nello stato in questione
+    
+    Punteggio OpponentScore;
 
     Punteggio Score;//Punteggio del giocatore (contrassegnato dal booleano IsMax) nello stato in questione
     
@@ -73,7 +75,7 @@ public final class Stato
      * 
      * @RETURNS State : Stato corrente
      */
-    public Stato(String L,ArrayList<Carta> T,ArrayList<Carta> H,KnowledgeBase K,Punteggio S,boolean Q,int PC)
+    public Stato(String L,ArrayList<Carta> T,ArrayList<Carta> H,KnowledgeBase K,Punteggio S,boolean Q,int PC,int InitialCard,int InitialPotential)
     {
         Actual = K;
         
@@ -93,9 +95,9 @@ public final class Stato
         
         Results = new ArrayList();
         
-        SuggestedCard = 0;
+        SuggestedCard = InitialCard;
         
-        SuggestedPotential = 0;
+        SuggestedPotential = InitialPotential;
         
         PlayerCards = PC;
                      
@@ -109,6 +111,7 @@ public final class Stato
     
     /**
      *
+     * 
      * @METHOD GeneraSuccessore
      * 
      * @OVERVIEW Metodo che espande uno stato generando i suoi successori fino ad 
@@ -134,64 +137,89 @@ public final class Stato
      * 
      * @param depth : Intero rappresentante la massima profondita arrivati alla quale 
      *      l'espansione dei vari stati si arresta
+     * 
+     * @param start : Valore booleano che indica se il metodo è stato chiamato per la prima volta 
+     * o meno, in modo da decidere se la carta attuale che porterà allo stato con guadagno massimo
+     * deve essere istanziata (nel caso start sia uguale a true) oppure propagata allo stato successore
+     * (nel caso start sia uguale a false)
     */
-    public synchronized void GeneraSuccessore(int depth)
+    public synchronized void GeneraSuccessore(int depth,boolean start)
     {
-        if(depth > 0)
+        if(depth >= 0)
         {
-        boolean turn = !this.IsMax;
+            boolean turn = !this.IsMax;
 
-        if(!turn)//CASO MAX (TURNO CPU)
-        {
-          if(!Hand.isEmpty())
-          {
-            for(Carta C : Hand)//Vengono considerate le carte presenti all'interno della mano del giocatore
+            if(turn)//CASO MAX (TURNO CPU)
             {
-                if(C.IsMarked() && !Table.isEmpty())
-                {                
-                    int Sc = C.MaxPotential;
-                    
-                    Stato S1;
-                    S1 = new Stato(Label+"-> "+C.nome+"/"+Sc,FT(Table,C,Sc),FH(Hand,C),Actual,FS(Score,C),turn,PlayerCards);
-                    SetSuggestedCard(Hand,S1,C,Sc);
+              if(!Hand.isEmpty())
+              {
+                for(Carta C : Hand)//Vengono considerate le carte presenti all'interno della mano del giocatore
+                {
+                    if(C.IsMarked() && !Table.isEmpty())
+                    {                
+                        int Sc = C.MaxPotential;
+                        int CardToPropagate = Hand.indexOf(C);
+                        
+                        Stato S1;
+                        
+                        if(start)
+                        {
+                            S1 = new Stato(Label+"-> "+C.nome+"/"+Sc,FT(Table,C,Sc),FH(Hand,C),Actual,FS(Score,C),turn,PlayerCards,CardToPropagate,Sc);
+                            SetSuggestedCard(Hand,S1,C,Hand.indexOf(C),Sc);
+                        }
+                        else
+                        {
+                            S1 = new Stato(Label+"-> "+C.nome+"/"+Sc,FT(Table,C,Sc),FH(Hand,C),Actual,FS(Score,C),turn,PlayerCards,SuggestedCard,SuggestedPotential);
+                            SetSuggestedCard(Hand,S1,C,SuggestedCard,SuggestedPotential);
+                        }
 
-                    Results.add(S1);
-                }
-               }
-            }
-          else
-          {
-              this.Results = null;
-          }
-        }
-        else//CASO MIN (TURNO GIOCATORE)
-        {
-          if(!Opponent.isEmpty())
-          {
-            for(Carta C : Opponent)//Vengono considerate le tre carte più promettenti per l'avversario
-            {
-                if(C.IsMarked() && !Table.isEmpty())
-                {                
-
-                           Stato S1;
-                            int Sc = C.MaxPotential;
-                            S1 = new Stato(Label+"-> "+C.nome+"/"+Sc,FT(Table,C,Sc),Hand,FKB(Actual,C),FS(Score,C),turn,PlayerCards-1);
-                            S1.Opponent = FOPP(Opponent,C);
-                            SetSuggestedCard(Opponent,S1,C,Sc);
-
-                            Results.add(S1);
-
+                        Results.add(S1);
+                    }
+                   }
                 }
             }
-          }
-        }
-        
-        for(Stato S1 : Results)
-        {
-            S1.GeneraSuccessore(depth-1);
-        }
-        }
+            else//CASO MIN (TURNO GIOCATORE)
+            {
+              if(!Opponent.isEmpty())
+              {
+                for(Carta C : Opponent)//Vengono considerate le tre carte più promettenti per l'avversario
+                {
+                    if(C.IsMarked() && !Table.isEmpty())
+                    {                
 
+                               Stato S1;
+                                int Sc = C.MaxPotential;
+                                int CardToPropagate = Opponent.indexOf(C);
+              
+                                if(start)
+                                {
+                                    S1 = new Stato(Label+"-> "+C.nome+"/"+Sc,FT(Table,C,Sc),Hand,FKB(Actual,C),Score,turn,PlayerCards-1,CardToPropagate,Sc);
+                                    SetSuggestedCard(Opponent,S1,C,Opponent.indexOf(C),Sc);
+                                }
+                                else
+                                {
+                                    S1 = new Stato(Label+"-> "+C.nome+"/"+Sc,FT(Table,C,Sc),Hand,FKB(Actual,C),Score,turn,PlayerCards-1,SuggestedCard,SuggestedPotential);
+                                    SetSuggestedCard(Opponent,S1,C,SuggestedCard,SuggestedPotential);
+                                }
+                                
+                                S1.Opponent = FOPP(Opponent,C);
+                                S1.OpponentScore = FS(OpponentScore,C);
+
+                                Results.add(S1);
+
+                    }
+                }
+              }
+            }
+
+            if(Results != null)
+            {
+                for(Stato S1 : Results)
+                {
+                    S1.GeneraSuccessore(depth-1,false);
+                }
+            }
+        }
     }
     
     /**
@@ -206,19 +234,17 @@ public final class Stato
     * @param C : Carta giocata nello stato in questione per generare lo stato figlio
     * @param Sc : Indice della presa giocata nello stato in questione per generare lo stato figlio
     */
-    public void SetSuggestedCard(ArrayList<Carta> CardSet,Stato S,Carta C,int Sc)
+    public void SetSuggestedCard(ArrayList<Carta> CardSet,Stato S,Carta C,int Index,int Sc)
     {
      if(C.HasPotential(Sc))
      {
         S.Gain = (C.ValoriPotenziale.get(Sc));
-        S.SuggestedCard = CardSet.indexOf(C);
+        S.SuggestedCard = Index;
         S.SuggestedPotential = Sc;
      }
      else
      {
          S.Gain = 0.0;
-         S.SuggestedCard = 0;
-         S.SuggestedPotential = 0;
      }
     }
             
@@ -465,6 +491,9 @@ public final class Stato
     public ArrayList<Carta> GetOpponent()
     {
         Opponent = Actual.GetMostValuableCards(Table,Score,PlayerCards);
+        
+        OpponentScore = Score.GetOpponentScore();
+
         return Opponent;
     }
     
@@ -706,15 +735,14 @@ public final class Stato
         }
         
         String Player = DeclarePlayer(IsMax);
+
+        System.out.println("---STATO: "+Label+"\n");
         
-        System.out.println("------------------------------------------\n");
-        System.out.println("---------STATO: "+Label+"-----------------");
-        System.out.println("------------------------------------------\n");
-        
-        System.out.println("-----GIOCATORE: "+Player+"----------------\n");
-        System.out.println("-----GUADAGNO: "+Gain+"---------------------");
-        System.out.println("-----CARTA CONSIGLIATA: "+SuggestedCard+"--------COMBINAZIONE CONSIGLIATA: "+SuggestedPotential);
-        System.out.println("------------------------------------------\n");
+        System.out.println("-GIOCATORE: "+Player+"\n");
+        System.out.println("-GUADAGNO: "+Gain+"\n");
+        System.out.println("-CARTA CONSIGLIATA: "+SuggestedCard+"\n");
+        System.out.println("-COMBINAZIONE CONSIGLIATA: "+SuggestedPotential+"\n");
+        System.out.println("----\n");
         
         for(Stato S1 : Results)
         {

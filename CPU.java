@@ -128,7 +128,7 @@ public class CPU extends Giocatore
     */
     public synchronized Stato Observe()
     {
-        Stato S = new Stato("ATTUALE",Table,mano,KB,points,turn,Sessione.Player.mano.size());
+        Stato S = new Stato("ATTUALE",Table,mano,KB,points,turn,Sessione.Player.mano.size(),0,0);
         
         return S;
     }

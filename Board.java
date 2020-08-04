@@ -2543,6 +2543,8 @@ public final class Board extends javax.swing.JFrame
         UnsetChoiceButtons();
         
         AnalyzedCard = null;
+        
+        HideSwitches();
     }//GEN-LAST:event_UndoButtonMousePressed
 
     private void OkButtonMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_OkButtonMousePressed

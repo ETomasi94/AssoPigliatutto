@@ -83,6 +83,9 @@ public class Menu extends javax.swing.JFrame
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 StartButtonMouseClicked(evt);
             }
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                StartButtonMousePressed(evt);
+            }
         });
 
         jLabel2.setIcon(new javax.swing.ImageIcon(getClass().getResource("/CardSkins/Menu icon.png"))); // NOI18N
@@ -157,17 +160,9 @@ public class Menu extends javax.swing.JFrame
         this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
     }//GEN-LAST:event_QuitButtonMousePressed
 
-    /*
-        @METHOD StartButtonMouseClicked
-    
-        @OVERVIEW Metodo che implementa la pressione del pulsante StartButton ("NUOVA PARTITA")
-                  ed il conseguente inizio di una nuova sessione di gioco
-    */
+   
     private void StartButtonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_StartButtonMouseClicked
-        Board board = new Board();
-        board.NewGame(false);
-        board.setVisible(true);
-        this.dispose();
+
     }//GEN-LAST:event_StartButtonMouseClicked
 
     /*
@@ -182,6 +177,18 @@ public class Menu extends javax.swing.JFrame
         board.setVisible(true);
         this.dispose();
     }//GEN-LAST:event_TestButtonMousePressed
+    /*
+        @METHOD StartButtonMousePressed
+    
+        @OVERVIEW Metodo che implementa la pressione del pulsante StartButton ("NUOVA PARTITA")
+                  ed il conseguente inizio di una nuova sessione di gioco
+     */
+    private void StartButtonMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_StartButtonMousePressed
+        Board board = new Board();
+        board.NewGame(false);
+        board.setVisible(true);
+        this.dispose();
+    }//GEN-LAST:event_StartButtonMousePressed
 
     /*----FINE METODI DI INTERAZIONE CON L'INTERFACCIA----*/
     

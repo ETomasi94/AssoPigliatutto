@@ -1,33 +1,48 @@
 /*
 ASSO PIGLIATUTTO
-PROGETTO DI ESPERIENZE DI PROGRAMMAZIONE A.A 2019-2020
+TESI DI LAUREA A.A 2020 - 2021
 
 AUTORE : ENRICO TOMASI
 NUMERO DI MATRICOLA: 503527
 
 OVERVIEW: Implementazione di un tipico gioco di carte italiano in cui il computer
 pianifica le mosse ed agisce valutando mediante ricerca in uno spazio di stati
+da parte della CPU ed un learner di rinforzo apprende a giocare per riuscire a 
+suggerire la mossa migliore da effettuare al giocatore
 */
 package assopigliatutto;
 
+import com.github.chen0040.rl.learning.qlearn.QLearner;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /*
     @CLASS Gioco
 
     @OVERVIEW Classe che implementa le meccaniche del gioco "sottostante" l'interfaccia
 */
-public final class Gioco extends Thread
+public class Gioco extends Thread
 {
      /*--------VARIABILI D'ISTANZA----------*/
     
     CPU CPU;
     
     Giocatore Player;
+    
+    LearningPlayer ReinforcementCPU;
+    
+    int Winning;
     
     ArrayList<Carta> Carte;//Mazzo di carte della sessione
     
@@ -50,14 +65,42 @@ public final class Gioco extends Thread
     boolean Tested;//Variabile che indica se il gioco è stato testato o meno, in modo da consentire l'esecuzione del test finale (FinalTest)
     
     static boolean Halt;//Flag che indica se il gioco va arrestato o meno
+    
+    boolean Endgame;//Boolean utile al training del bot per verificare che una partita sia finita o meno
                
     Random rnd;//Randomizzatore utile per gli elementi stocastici della partita
+    
+    boolean TestGame;//Valore booleano che indica se il gioco sta venendo testato o meno (Metodo test)
+    
+    boolean TrainingGame;//Valore booleano che indica se a giocare è un umano (false) o il bot (true)
+    
+    int TimesToTrainGame;//Intero che indica il numero di partite da giocare per lasciare che il bot apprenda
        
     /*
         Threadpool per l'esecuzione concorrente dei thread relativi agli avversari
         ovvero il giocatore e la CPU
     */
     ExecutorService Sfidanti = Executors.newFixedThreadPool(2);
+    
+    ScoreFrame Scores;//Quadro dei punteggi visualizzato a fine partita
+    
+    Profile Gamer;//Profilo associato al giocatore ed al bot
+    
+    QLearner Learner;//Learner del bot
+    
+    QBot BotQ;//Bot che impara a giocare tramite un algoritmo di Q-Learning
+    
+    StateDatabase Database;//Database degli stati associato al profilo da cui il bot può reperire l'azione consigliata
+    
+    Calendar GameStart;
+    
+    Calendar Start;
+    
+    int TimeMeasuredFor;
+    
+    ArrayList<Double> RewardsDuringGame;
+    
+    ArrayList<Double> MeanRewards;
      /*-------------------------------------------*/
     
     /*-------METODO COSTRUTTORE--*/
@@ -74,21 +117,36 @@ public final class Gioco extends Thread
     
         @RETURNS Sessione : Istanza della classe Gioco rappresentante la sessione di gioco corrente
     */
-    public Gioco(Board I,boolean DoTest) 
+    public Gioco(Board I,boolean DoTest,boolean IsTraining,Profile P) 
     {              
         rnd = new Random();
         
+        TestGame = DoTest;
+        
+        TrainingGame = IsTraining;
+        
+        TimesToTrainGame = 1;
+        
+        InizializzaProfilo(P);
+        
         InizializzaMazzo();     
-        InizializzaGiocatori();
-
-        Halt = false;
         
-        Interface = I;
-
-        Test = new TesterDebugger(this); 
+        if(!IsTraining)
+        {
+            InizializzaGiocatori(Gamer.name);
+        }
+        else
+        {
+            InizializzaGiocoAutomatico(Gamer.name);
+        }
+               
+        InizializzaTurni();
         
-        Tested = !DoTest;
+        InizializzaBot();
+        
+        InizializzaElementiResidui(I,DoTest);
     }
+ 
     /*---------------------------*/
     
     /*----FINE METODO COSTRUTTORE----*/
@@ -103,14 +161,122 @@ public final class Gioco extends Thread
                   e setta le principali variabili d'istanza dei due avversari in modo che possano interagire
                   con il gioco, in seguito fa sì che i due avversari peschino la loro prima mano
     */
-    public void InizializzaGiocatori()
+    public void InizializzaGiocatori(String PlayerName)
     {
-        CPU = new CPU("CPU",true,this,Tavolo);
-        Player = new Giocatore("Player",false,Tavolo);
+        InizializzaCPU(250);
         
+        InizializzaGiocatoreUmano(PlayerName);
+        
+        AttivaSfidanti();
+    }
+    
+    /**
+     * @METHOD InizializzaGiocoAutomatico
+     * 
+     * @OVERVIEW Metodo che inizializza una sessione di gioco in cui la CPU ed 
+     *           il bot si sfidano in modo che quest'ultimo apprenda a giocare
+     * 
+     * @param PlayerName Nome del giocatore associato al bot per i suggerimenti
+     */
+    public void InizializzaGiocoAutomatico(String PlayerName)
+    {
+        InizializzaCPU(500);
+        
+        InizializzaApprendista(PlayerName);
+        
+        SpeedUp();
+        
+        AttivaSfidanti();
+    }
+    
+    /**
+     * @METHOD Inizializza CPU
+     * 
+     * @OVERVIEW Metodo che inizializza la CPU del gioco
+     * 
+     * @param ms Tempo di attesa stabilito per la CPU per favorire l'interleaving
+     *           dei processi relativi alla CPU ed al bot.
+     */
+    public void InizializzaCPU(long ms)
+    {
+       CPU = new CPU("CPU",true,this,Tavolo);
+       
+       CPU.SetInterleavingTime(ms);
+    }
+    
+    /**
+     * @METHOD InizializzaGiocatoreUmano
+     * 
+     * @OVERVIEW Metodo che imposta la partita affinche' un giocatore umano giochi
+     *           contro la CPU
+     * 
+     * @param PlayerName Stringa rappresentante il nome del giocatore
+     */
+    public void InizializzaGiocatoreUmano(String PlayerName)
+    {
+       Player = new Giocatore(PlayerName,false,Tavolo); 
+       Gamer.AssignPlayer(Player);
+    }
+    
+    /**
+     * @METHOD AttivaSfidanti
+     * 
+     * @OVERVIEW Metodo che attiva i thread relativi al giocatore (o al bot) 
+     *           ed alla CPU in modo da iniziare la partita.
+     */
+    public void AttivaSfidanti()
+    {
         Sfidanti.submit(CPU);
-        Sfidanti.submit(Player);
+        Sfidanti.submit(Player);  
+    }
+    
+    /**
+     * @METHOD InizializzaApprendista
+     * 
+     * @OVERVIEW Metodo che imposta la partita affinche' il bot giochi contro 
+     *           la CPU
+     * 
+     * @param PlayerName Nome del giocatore associato al bot
+     */
+    public void InizializzaApprendista(String PlayerName)
+    {
+        Player = new LearningPlayer(PlayerName,false,this,Tavolo);
+        Gamer.AssignPlayer(Player);
+    }
 
+    /**
+     * @METHOD InizializzaElementiResidui
+     * 
+     * @OVERVIEW Metodo che imposta le variabili booleane fondamentali per la partita
+     *           dopo aver inizializzato la sessione di gioco e gli sfidanti
+    */
+    public void InizializzaElementiResidui(Board I,boolean DoTest)
+    {
+        Halt = false;
+        
+        Endgame = false;
+        
+        if(I != null)
+        {
+            Interface = I;
+        }
+
+        Test = new TesterDebugger(this); 
+        
+        Tested = !DoTest;
+        
+        Scores = null;
+    }
+    
+    /**
+     * @METHOD InizializzaTurni
+     * 
+     * @OVERVIEW Metodo che determina il turno iniziale dei due sfidanti a seconda
+     *           di chi è il mazziere e consente a questi di prendere in mano le carte
+     *           della prima mano di gioco
+     */
+    public void InizializzaTurni()
+    {
         boolean Mazziere = rnd.nextBoolean(); 
 
         CPU.SetMazziere(Mazziere);
@@ -127,6 +293,29 @@ public final class Gioco extends Thread
         
         Player.AssegnaTurno(!Turn);
     }
+    
+    /**
+     * @METHOD InizializzaProfilo
+     * 
+     * @OVERVIEW Metodo che interfaccia il profilo del giocatore alla sessione di gioco
+     *           in modo da consentire l'aggiornamento della strategia del bot suggeritore
+     *           e del database degli stati con conseguente memorizzazione di questi.
+     * 
+     * @param P Profilo da interfacciare alla sessione di gioco.
+     */
+    public void InizializzaProfilo(Profile P)
+    {
+        Gamer = P;
+        Database = P.DB;
+        Learner = P.Learner;
+    }
+    
+    public void InizializzaBot()
+    {
+        BotQ = new QBot(this,Learner,false);
+        BotQ.SetPlayer(Player);
+    }
+
     
     /*
         @METHOD RestartPlayers
@@ -153,6 +342,50 @@ public final class Gioco extends Thread
         CPU.AssegnaTurno(Turn);
         
         Player.AssegnaTurno(!Turn);
+    }
+    
+    /**
+     * @OVERVIEW Metodo che avvia un'altra sessione di gioco quando CPU e bot
+     *           giocano molteplici partite consecutive.
+     */
+    public void ResetGame()
+    {               
+        Player.ShutDown();
+        
+        CPU.ShutDown();
+        
+        Sfidanti.shutdownNow();
+        
+        this.Interface.dispose();
+        
+        Board I = new Board();       
+                
+        I.NewGame(false,TrainingGame,Gamer);
+        
+        I.Sessione.SetTimesToTrain(TimesToTrainGame);
+  
+        if(TrainingGame)
+        {
+            BotQ.ClearMoves();
+        }
+
+        
+        I.setVisible(true);
+        
+    }
+    
+    /**
+     * @METHOD SpeedUp
+     * 
+     * @OVERVIEW Metodo che velocizza il giocatore associato al bot e la CPU in modo
+     *           da accelerare i tempi di gioco quando è in corso una partita tra
+     *           questi ultimi.
+     */
+    public void SpeedUp()
+    {
+        CPU.SetSpeedMode(true);
+        
+        Player.SetSpeedMode(true);
     }
     
     /*
@@ -256,7 +489,11 @@ public final class Gioco extends Thread
 
         if(Valida)
         {               
-            Turn = ControllaTurno();     
+            Turn = ControllaTurno();
+
+            Test.Update();
+            
+            //Test.ReadFromDump("0251-P1");
         }
         else
         {
@@ -268,6 +505,12 @@ public final class Gioco extends Thread
             
             NuovoGioco();
         }
+        
+        RewardsDuringGame = new ArrayList();
+        
+        MeanRewards = new ArrayList();
+        
+        GameStart = Calendar.getInstance();
     }
     
     /*
@@ -340,6 +583,10 @@ public final class Gioco extends Thread
     */
     public void DichiaraVincitore()
     {
+        Calendar GameEnd = Calendar.getInstance();
+        long Difference = ((GameEnd.getTimeInMillis() - GameStart.getTimeInMillis()));
+        Gamer.Statistics.AddGameTime(Difference);
+        
         String Winner = "";
         
         int GLOBALCPU = 0;
@@ -409,22 +656,74 @@ public final class Gioco extends Thread
         
         if(GLOBALPLAYER > GLOBALCPU)
         {
+            Winning = 1;
+            
             Winner = Player.nome;
             System.out.println("VINCE IL GIOCATORE");
         }
         else if(GLOBALPLAYER < GLOBALCPU)
         {
+            Winning = -1;
+            
             Winner = "CPU";
             System.out.println("VINCE LA CPU");
         }
         else
         {
+            Winning = 0;
+            
             Winner = "DRAW";
             System.out.println("ABBIAMO UN PAREGGIO");
         }
         
-        //Passaggio alla schermata dei punteggi
-        Interface.GoToScores(PLAYERSCORE, CPUSCORE, Winner);
+        Endgame = true;
+        
+        TimesToTrainGame--;
+        
+        if(!TrainingGame)
+        {
+            Gamer.UpdateStatsManual(Winning,CPU.CardsPlayed,CPU.GreedyPlayed);
+        }
+        else
+        {
+            int CPl = CPU.CardsPlayed;
+            int CGPl = CPU.GreedyPlayed;
+            int LCPl = Player.LearnerCardsPlayed;
+            int LCGPl = BotQ.CardsPlayedGreedily;
+            int Expl = BotQ.ExploredMoves;
+            int Expt = BotQ.ExploitedMoves;
+            
+            CPU.CalculateMeanDecisionTime();
+            Player.CalculateMeanDecisionTime();
+            
+            double CPUTime = CPU.MeanDecisionTime;
+            double LearnerTime = Player.MeanDecisionTime;
+            
+            Gamer.Learner = Learner;
+            Gamer.SaveLearner(Learner);
+            Gamer.UpdateStatsAutomatic(Winning,CPl,CGPl,LCPl,LCGPl,Expl,Expt,CPUTime,LearnerTime);
+            
+            SingleGameStatsPlot();
+        }
+        
+        if(TimesToTrainGame <= 0)
+        {
+            ShutDownPlayers();
+            //Passaggio alla schermata dei punteggi
+            Interface.GoToScores(PLAYERSCORE, CPUSCORE, Winner);
+            try
+            {
+                Gamer.Statistics.PlotGameStats();
+            }
+            catch(IOException ex)
+            {
+                ex.printStackTrace();
+            }
+        }
+        else
+        {
+            ResetGame();
+        }
     }
     
     /*
@@ -446,15 +745,19 @@ public final class Gioco extends Thread
  
         if(CPU.YourTurn())
         {
-            System.out.println("E' il turno della CPU\n");
+            TimeMeasuredFor = 0;
+            StartTimer(0);
+            //System.out.println("E' il turno della CPU\n");
             
             return true;
         }
         else
         {
-            System.out.println("E' il turno del giocatore\n");
+            TimeMeasuredFor = 1;
+            StartTimer(1);
+            //System.out.println("E' il turno del giocatore\n");
             
-            VisualizzaTurno();
+           // VisualizzaTurno();
             
             return false;
         }
@@ -541,6 +844,31 @@ public final class Gioco extends Thread
         Player.AssegnaTurno(!Turn);
     }
     
+    
+    /**
+     * @METHOD Switch
+     * 
+     * @OVERVIEW Metodo che implementa il cambio di turni durante la partita e la
+     *           conseguente visualizzazione su interfaccia
+     */
+    public void Switch()
+    {       
+            CambioTurno();
+
+            ControllaTurno();
+            try
+            {
+                Interface.Display();
+            }
+            catch(IndexOutOfBoundsException ex)
+            {
+                ex.printStackTrace();
+                System.out.println("RESET");
+                ResetGame();
+                Interface.NewGame(false,TrainingGame,Gamer);
+            }
+
+    }
     /*
         @METHOD RivalutaPotenziale
     
@@ -556,6 +884,11 @@ public final class Gioco extends Thread
         CPU.GetTotalPotential(Tavolo);
     }
     
+    public synchronized boolean PunteggiVisibili()
+    {
+        return (Scores != null);
+    }
+    
     /*
         @METHOD ControlloValidità
     
@@ -568,7 +901,7 @@ public final class Gioco extends Thread
         REGOLA DEI TRE RE: Affinché la prima mano della partita sia valida devono esserci meno
         di tre carte re (valore 10) sul tavolo
     */
-    public boolean ControlloValidità()
+    public synchronized boolean ControlloValidità()
     {
         boolean response = true;
         
@@ -598,6 +931,24 @@ public final class Gioco extends Thread
         return response;
     }
     
+    /**
+     * @METHOD AggiornaBot
+     * 
+     * @OVERVIEW Metodo che attiva il bot dandogli una copia dello stato iniziale
+     *           in modo che questi lo osservi e decida di conseguenza la mossa
+     *           da compiere
+     */
+    public synchronized void AggiornaBot()
+    {
+        Stato State = new Stato("LEARNER_STATE",Tavolo,Player.mano,CPU.KB,Player.points,Turn,CPU.mano.size(),0,0);
+        
+        BotQ.ObserveLearnerState(State);
+        
+        BotQ.Act();
+        
+        RivalutaPotenziale();
+    }
+       
     /*
         @METHOD AggiornaKB
     
@@ -620,60 +971,101 @@ public final class Gioco extends Thread
             nel caso essa non esista
        @PAR C : Carta da giocare sul tavolo
     */
-    public void GiocaCarta(Giocatore Plr,int combinazione,Carta C)
+    public synchronized void GiocaCarta(Giocatore Plr,int combinazione,Carta C)
     {
-        Plr.mano.remove(C);
-
-        /*
-          Nel caso la carta sia un asso, il giocatore può fare scopa se e soltanto se
-          vi è un altro asso in campo ed è l'ultimo rimasto
-        */
-        boolean AssoDoppio = false;
+        DisplayOnInterface(C, combinazione, Plr);
         
-            if(!C.IsMarked())
-            {
-                Tavolo.add(C);
-            }
-            else
-            {
-                ArrayList<Carta> Ptz = C.Potenziale.get(combinazione);
-
-                for(Carta card : Ptz)
-                {          
-                    if(C.IsAnAce() && card.IsAnAce())
-                    {
-                        AssoDoppio = true;
-                    }
-                    
-                    Tavolo.remove(card);
-
-                    Plr.Score(card);
-                }
-                
-                Plr.Score(C);
-                
-                UltimaPresa(Plr);
-            }
+        EndTimer(TimeMeasuredFor);
+        
+        if(Plr.equals(CPU))
+        {
+            CPU.CardsPlayed++;
+        }
+  
+            Plr.mano.remove(C);
 
             /*
-                Se il tavolo rimane vuoto dopo la giocata, il giocatore fa scopa
+              Nel caso la carta sia un asso, il giocatore può fare scopa se e soltanto se
+              vi è un altro asso in campo ed è l'ultimo rimasto
             */
-            if(Tavolo.isEmpty())
-            {
-                if(!C.IsAnAce() || (AssoDoppio))
+            boolean AssoDoppio = false;
+
+                if(!C.IsMarked())
                 {
-                    Plr.Scopa();
+                    Tavolo.add(C);
+                }
+                else
+                {
+                    RivalutaPotenziale();
                     
+                    ArrayList<Carta> Ptz;
+                    
+                    if(C.HasPotential(combinazione))
+                    {
+                         Ptz = C.Potenziale.get(combinazione);
+                    }
+                    else
+                    {
+                        int MaxPot = C.MaxPotential;
+                        
+                        Ptz = C.Potenziale.get(MaxPot);
+                    }
+
+                    for(Carta card : Ptz)
+                    {          
+                        if(C.IsAnAce() && card.IsAnAce())
+                        {
+                            AssoDoppio = true;
+                        }
+
+                        Tavolo.remove(card);
+
+                        Plr.Score(card);
+                    }
+
+                    Plr.Score(C);
+
                     UltimaPresa(Plr);
                 }
-            }
+
+                /*
+                    Se il tavolo rimane vuoto dopo la giocata, il giocatore fa scopa
+                */
+                if(Tavolo.isEmpty())
+                {
+                    if(!C.IsAnAce() || (AssoDoppio))
+                    {
+                        Plr.Scopa();
+
+                        UltimaPresa(Plr);
+                    }
+                }
+      
+        //PrintAction(Plr,C,combinazione);
+            
         boolean EndTurn = FineMano();
 
-        CambioTurno();
         
-        ControllaTurno();
         
-        Interface.Display();
+        Switch();
+    }
+    
+    /**
+     * @METHOD GiocaIndexCard
+     * 
+     * @OVERVIEW Metodo che, dati due interi rappresentanti un indice ed una combinazione
+     *           consente di giocare la carta e la combinazione indicizzata da questi
+     * 
+     * @param Plr Giocatore che gioca la carta
+     * @param Comb Combinazione da giocare
+     * @param Index Indice della carta da giocare all'interno della mano del giocatore
+     *              dato in input.
+     */
+    public synchronized void GiocaIndexCard(Giocatore Plr,int Comb,int Index)
+    {
+        Carta C = Plr.GetCard(Index);
+        
+        GiocaCarta(Plr,Comb,C);
     }
    
     /*-----FINE METODI DI GIOCO----*/
@@ -952,6 +1344,11 @@ public final class Gioco extends Thread
         return this.Player;
     }
     
+    public void SetTimesToTrain(int Times)
+    {
+        TimesToTrainGame = Times;
+    }
+    
     /*
         @METHOD DichiaraPunteggioCPU
     
@@ -994,6 +1391,7 @@ public final class Gioco extends Thread
         Halt = true;
         
         Player.ShutDown();
+        
         CPU.ShutDown();
         
         Sfidanti.shutdownNow();     
@@ -1015,6 +1413,18 @@ public final class Gioco extends Thread
     }
     /*-----------------------------------------------------*/
     
+    public void DisplayOnInterface(Carta Card,int Comb,Giocatore P)
+    {
+        try
+        {
+            Interface.RevealCard(P, Card, Comb);
+        }
+        catch(IndexOutOfBoundsException e)
+        {
+            e.printStackTrace();
+            ResetGame();
+        }
+    }
     /*
         @METHOD VisualizzaTurno
     
@@ -1077,7 +1487,7 @@ public final class Gioco extends Thread
         
         return Condition1;
     }
-    
+
     /*
         @METHOD FinalTest
     
@@ -1115,6 +1525,13 @@ public final class Gioco extends Thread
         CPU.StopTurn();
     }
     
+    public void ShutDownPlayers()
+    {
+        Player.ShutDown();
+        CPU.ShutDown();
+        Sfidanti.shutdownNow(); 
+    }
+    
     /*
         @METHOD RestarGame
     
@@ -1149,6 +1566,13 @@ public final class Gioco extends Thread
         
         Player.AssegnaTurno(!Turn);
     }
+    
+    public Stato WatchState(String Label)
+    {
+        Stato State = new Stato(Label,Tavolo,Player.mano,CPU.KB,Player.points,Turn,CPU.mano.size(),0,0);
+        
+        return State;
+    }
      
     /*--------------------------------------*/
     
@@ -1165,15 +1589,183 @@ public final class Gioco extends Thread
      {
          while(!Halt)
          {
-             if(StandOff())
+             try
              {
-                 CambioTurno();
-             }
+                if(StandOff())
+                {
+                     CambioTurno();
+                }
              
-             if(NoCardForNoOne())
+                if(NoCardForNoOne())
+                {
+                     Distribuisci();
+                }
+             }
+             catch(IndexOutOfBoundsException e)
              {
-                 Distribuisci();
+                 ResetGame();
              }
          }
      }
+     
+     /**
+      * @METHOD CardSuggestion
+      * 
+      * @OVERVIEW Metodo che restituisce in output la carta suggerita dal bot
+      * 
+      * @return Suggested Intero rappresentante l'indice di posizione della carta
+      *         da giocare all'interno della mano del giocatore
+      */
+     public int CardSuggestion()
+     {
+         int Suggested = BotQ.ReturnCardIndex();
+         return Suggested;
+     }
+     
+     /**
+      * @METHOD CombinationSuggestion
+      * 
+      * @OVERVIEW Metodo che restituisce in output la combinazione suggerita dal bot
+      * 
+      * @return Suggested Intero rappresentante l'indice di posizione della combinazione
+      *         da giocare tra le combinazioni possibili con la carta suggerita
+      *         dal bot
+      */
+     public int CombinationSuggestion()
+     {
+         int Suggested = BotQ.ReturnCombination();
+         return Suggested;
+     }
+     
+     public void AddMoveReward(double Reward)
+     {
+         RewardsDuringGame.add(Reward);
+     }
+     
+     public void AddMeanRewardUntilLastMove()
+     {
+         int i=0;
+         double Sum = 0.0;
+         double Result = 0.0;
+         int MoveIndex = RewardsDuringGame.size();
+         for(i=0; i<MoveIndex; i++)
+         {
+             Sum += RewardsDuringGame.get(i);
+         }
+         
+         Result = Sum / (MoveIndex * 1.0);
+        
+         MeanRewards.add(Result);
+     }
+     
+    public void StartTimer(int ChronoPlr)
+    {
+        TimeMeasuredFor = ChronoPlr;
+        
+        Start = Calendar.getInstance();
+    }
+    
+    public void EndTimer(int ChronoPlr)
+    {
+        Calendar End = Calendar.getInstance();
+        long Difference = (End.getTimeInMillis() - Start.getTimeInMillis());
+        
+        if(ChronoPlr == 0)
+        {
+            CPU.DecisionsTimeDuration.add(Difference);
+        }
+        else
+        {
+            Player.DecisionsTimeDuration.add(Difference);
+        }
+        
+        System.out.println("TIMEFOR:"+ChronoPlr+" DIFFERENCE:"+Difference);
+    }
+    
+    public void SingleGameStatsPlot()
+    {
+        FileWriter PlotFile = null;
+        String path = "src/main/statisticsdumps/plottable/";
+        String TimeStamp = new SimpleDateFormat("HH.mm.ss").format(new Date());
+        File Plot = new File(path+"PlottableStatsGame_"+Gamer.name+"_"+TimeStamp+".txt");
+        
+        try 
+        {
+            PlotFile = new FileWriter(Plot);
+            PlotFile.write("Actions | Reward | MeanReward | Variance\n");
+            
+            for(int i=0; i<RewardsDuringGame.size(); i++)
+            {
+                double InstantReward = RewardsDuringGame.get(i);
+                double Mean = MeanRewards.get(i);
+                double Variance = Math.abs(InstantReward-Mean);
+                String Reward = String.format("%.4f",InstantReward);
+                String MeanRewardAtThatPoint = String.format("%.4f",Mean);
+                String InstantRewardVariance = String.format("%.4f",Variance);
+                PlotFile.write(i+"|"+Reward+"|"+MeanRewardAtThatPoint+"|"+InstantRewardVariance+"\n");
+            }
+            
+            PlotFile.close();
+        } 
+        catch (IOException ex) 
+        {
+            ex.printStackTrace();
+        }
+    }
+     
+     /**
+      * @METHOD PrintAction
+      * 
+      * @OVERVIEW Metodo che stampa in output un resoconto sintetico della carta
+      *           giocata da un giocatore ed eventualmente della presa effettuata
+      *           tramite quest'ultima da esso
+      * 
+      * @param Plr Giocatore che effettua l'azione
+      * @param C Carta giocata
+      * @param PotentialIndex Indice della combinazione corrispondente alla
+      *                       presa effettuata dal giocatore Plr
+      */
+     public void PrintAction(Giocatore Plr,Carta C,int PotentialIndex)
+     {
+         System.out.println("-----------TURNO: "+Plr.nome+"--------------------");
+         System.out.println(Plr.nome+" ha scelto di giocare: "+C.GetName()+"\n");
+            
+            if(C.IsMarked())
+            {
+                System.out.println(" Ed ha preso: ");
+                
+                System.out.print("\t");
+                C.StampaSelezione(PotentialIndex);
+                System.out.println("\n");
+            }
+            
+          System.out.println("------------FINE TURNO----------------\n");
+     }
+     
+     public void DumpBot()
+    {
+        File MatrixDump = new File("src/main/Matrix.txt");
+        try 
+        {
+        FileWriter MatrixWr = new FileWriter(MatrixDump);
+        
+
+        for(int i=0; i<98000;i++)
+        {
+            for(int j=0; j<112;j++)
+            {
+                if(Learner.getModel().getQ(i,j) != 0.1)
+                {
+                    MatrixWr.append("i: "+i+"j: "+j+"Reward: "+Learner.getModel().getQ(i,j)+"\n");
+                }
+            }
+        }
+        } catch (IOException ex) 
+        {
+            Logger.getLogger(QBot.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        
+    }
+ 
 }

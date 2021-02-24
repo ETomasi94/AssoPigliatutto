@@ -1,6 +1,6 @@
 /*
 ASSO PIGLIATUTTO
-PROGETTO DI ESPERIENZE DI PROGRAMMAZIONE A.A 2019-2020
+TESI DI LAUREA A.A 2020 - 2021
 
 AUTORE : ENRICO TOMASI
 NUMERO DI MATRICOLA: 503527
@@ -23,9 +23,12 @@ public class ScoreFrame extends javax.swing.JFrame
     /*----VARIABILI D'ISTANZA----*/
     
     Punteggio ScorePlayer;//Punteggio del giocatore
+    
     Punteggio ScoreCPU;//Punteggio della CPU
     
     Gioco Sessione;//Sessione di gioco corrente
+
+    boolean Appeared;
     
     /*----FINE VARIABILI D'ISTANZA----*/
     
@@ -43,6 +46,7 @@ public class ScoreFrame extends javax.swing.JFrame
     public ScoreFrame() 
     {
         initComponents();
+        Appeared = true;
     }
     
     /*----FINE METODO COSTRUTTORE----*/
@@ -60,6 +64,52 @@ public class ScoreFrame extends javax.swing.JFrame
     public void SetGioco(Gioco G)
     {
         Sessione = G;
+        Sessione.Scores = this;
+    }
+    
+    /**
+     * @METHOD Quit
+     * 
+     * @OVERVIEW Metodo che termina la sessione di gioco corrente e chiude la
+     *           finestra dei punteggi ed arresta il programma in esecuzione.
+     */
+    public void Quit()
+    {
+        Sessione.Halt();
+        Appeared = false;
+        this.dispose();
+    }
+    
+    /**
+     * @METHOD BackToMenu
+     * 
+     * @OVERVIEW Metodo che visualizza un nuovo menu sullo schermo.
+     */
+    public void BackToMenu()
+    {
+        Appeared = false;
+        Sessione.Halt();
+        Menu menu = new Menu();
+        menu.setVisible(true);
+        this.dispose();
+    }
+    
+    /**
+     * @METHOD PlayAgain
+     * 
+     * @OVERVIEW Metodo che avvia una nuova partita.
+     * 
+     * @param TimesLeft Intero rappresentante le partite rimaste da giocare in caso
+     *                  l'apprendista stia giocando molteplici partite consecutive
+     *                  con la CPU.
+     */
+    public void PlayAgain(int TimesLeft)
+    {
+        Board board = new Board();
+        board.NewGame(Sessione.TestGame,Sessione.TrainingGame,Sessione.Gamer);
+        board.setVisible(true);
+        board.Sessione.SetTimesToTrain(TimesLeft);
+        this.dispose();
     }
     
     /*
@@ -175,12 +225,12 @@ public class ScoreFrame extends javax.swing.JFrame
         SettebelloCPU = new javax.swing.JLabel();
         PrimieraOfCPU = new javax.swing.JLabel();
         QuitButton = new javax.swing.JButton();
-        BackToMenuButton1 = new javax.swing.JButton();
+        PlayAgainButton = new javax.swing.JButton();
         WinnerLabel = new javax.swing.JLabel();
+        BackToMenuButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("ASSO PIGLIATUTTO");
-        setMaximumSize(new java.awt.Dimension(1300, 605));
         setMinimumSize(new java.awt.Dimension(1300, 605));
         setSize(new java.awt.Dimension(1300, 605));
 
@@ -325,26 +375,43 @@ public class ScoreFrame extends javax.swing.JFrame
             }
         });
 
-        BackToMenuButton1.setBackground(new java.awt.Color(0, 204, 102));
-        BackToMenuButton1.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
-        BackToMenuButton1.setText("TORNA AL MENU");
-        BackToMenuButton1.setMaximumSize(new java.awt.Dimension(270, 60));
-        BackToMenuButton1.setMinimumSize(new java.awt.Dimension(270, 60));
-        BackToMenuButton1.setPreferredSize(new java.awt.Dimension(300, 60));
-        BackToMenuButton1.addMouseListener(new java.awt.event.MouseAdapter() {
+        PlayAgainButton.setBackground(new java.awt.Color(0, 204, 102));
+        PlayAgainButton.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
+        PlayAgainButton.setText("GIOCA ANCORA");
+        PlayAgainButton.setMaximumSize(new java.awt.Dimension(270, 60));
+        PlayAgainButton.setMinimumSize(new java.awt.Dimension(270, 60));
+        PlayAgainButton.setPreferredSize(new java.awt.Dimension(300, 60));
+        PlayAgainButton.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
-                BackToMenuButton1MousePressed(evt);
+                PlayAgainButtonMousePressed(evt);
             }
         });
-        BackToMenuButton1.addActionListener(new java.awt.event.ActionListener() {
+        PlayAgainButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                BackToMenuButton1ActionPerformed(evt);
+                PlayAgainButtonActionPerformed(evt);
             }
         });
 
         WinnerLabel.setFont(new java.awt.Font("Trajan Pro", 1, 36)); // NOI18N
         WinnerLabel.setForeground(new java.awt.Color(255, 255, 255));
         WinnerLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+
+        BackToMenuButton.setBackground(new java.awt.Color(255, 0, 0));
+        BackToMenuButton.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
+        BackToMenuButton.setText("TORNA AL MENU");
+        BackToMenuButton.setMaximumSize(new java.awt.Dimension(270, 60));
+        BackToMenuButton.setMinimumSize(new java.awt.Dimension(270, 60));
+        BackToMenuButton.setPreferredSize(new java.awt.Dimension(300, 60));
+        BackToMenuButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                BackToMenuButtonMousePressed(evt);
+            }
+        });
+        BackToMenuButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                BackToMenuButtonActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout ScoreFramePanelLayout = new javax.swing.GroupLayout(ScoreFramePanel);
         ScoreFramePanel.setLayout(ScoreFramePanelLayout);
@@ -356,44 +423,47 @@ public class ScoreFrame extends javax.swing.JFrame
                         .addContainerGap()
                         .addComponent(Titolo, javax.swing.GroupLayout.DEFAULT_SIZE, 1280, Short.MAX_VALUE))
                     .addGroup(ScoreFramePanelLayout.createSequentialGroup()
-                        .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addGroup(ScoreFramePanelLayout.createSequentialGroup()
+                                    .addGap(233, 233, 233)
+                                    .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                        .addComponent(PrimieraOfPlayer, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(CoinsPlayer, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(SettebelloPlayer, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(ScopePlayer, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(TakenPlayer, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(PlayerL, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addGroup(ScoreFramePanelLayout.createSequentialGroup()
+                                            .addGap(98, 98, 98)
+                                            .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                .addComponent(DenariPresi, javax.swing.GroupLayout.PREFERRED_SIZE, 281, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addComponent(SettebelloCheck, javax.swing.GroupLayout.PREFERRED_SIZE, 281, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addComponent(CartePrese, javax.swing.GroupLayout.PREFERRED_SIZE, 281, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, ScoreFramePanelLayout.createSequentialGroup()
+                                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                            .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                .addComponent(PrimieraTotalizzata, javax.swing.GroupLayout.PREFERRED_SIZE, 281, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addComponent(ScopeOttenute, javax.swing.GroupLayout.PREFERRED_SIZE, 281, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                    .addGap(99, 99, 99)
+                                    .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(PrimieraOfCPU, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(TakenCPU, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(CoinsCPU, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(ScopeCPU, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(SettebelloCPU, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(CPUName, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addGroup(ScoreFramePanelLayout.createSequentialGroup()
+                                    .addGap(374, 374, 374)
+                                    .addComponent(WinnerLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 546, javax.swing.GroupLayout.PREFERRED_SIZE)))
                             .addGroup(ScoreFramePanelLayout.createSequentialGroup()
-                                .addGap(233, 233, 233)
-                                .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(PrimieraOfPlayer, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(CoinsPlayer, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(SettebelloPlayer, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(ScopePlayer, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(TakenPlayer, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(PlayerL, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(ScoreFramePanelLayout.createSequentialGroup()
-                                        .addGap(98, 98, 98)
-                                        .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(DenariPresi, javax.swing.GroupLayout.PREFERRED_SIZE, 281, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(SettebelloCheck, javax.swing.GroupLayout.PREFERRED_SIZE, 281, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(CartePrese, javax.swing.GroupLayout.PREFERRED_SIZE, 281, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, ScoreFramePanelLayout.createSequentialGroup()
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(PrimieraTotalizzata, javax.swing.GroupLayout.PREFERRED_SIZE, 281, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(ScopeOttenute, javax.swing.GroupLayout.PREFERRED_SIZE, 281, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                                .addGap(99, 99, 99)
-                                .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(PrimieraOfCPU, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(TakenCPU, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(CoinsCPU, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(ScopeCPU, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(SettebelloCPU, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(CPUName, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                            .addGroup(ScoreFramePanelLayout.createSequentialGroup()
-                                .addGap(374, 374, 374)
-                                .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(WinnerLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addGroup(ScoreFramePanelLayout.createSequentialGroup()
-                                        .addComponent(BackToMenuButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 270, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(QuitButton, javax.swing.GroupLayout.PREFERRED_SIZE, 270, javax.swing.GroupLayout.PREFERRED_SIZE)))))
+                                .addContainerGap()
+                                .addComponent(PlayAgainButton, javax.swing.GroupLayout.PREFERRED_SIZE, 270, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(BackToMenuButton, javax.swing.GroupLayout.PREFERRED_SIZE, 270, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(QuitButton, javax.swing.GroupLayout.PREFERRED_SIZE, 270, javax.swing.GroupLayout.PREFERRED_SIZE)))
                         .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
@@ -432,11 +502,12 @@ public class ScoreFrame extends javax.swing.JFrame
                     .addComponent(PrimieraOfCPU, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(WinnerLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 82, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGap(18, 18, 18)
                 .addGroup(ScoreFramePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(PlayAgainButton, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(QuitButton, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(BackToMenuButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(36, 36, 36))
+                    .addComponent(BackToMenuButton, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(29, 29, 29))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -461,9 +532,9 @@ public class ScoreFrame extends javax.swing.JFrame
 
     }//GEN-LAST:event_QuitButtonActionPerformed
 
-    private void BackToMenuButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BackToMenuButton1ActionPerformed
+    private void PlayAgainButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_PlayAgainButtonActionPerformed
 
-    }//GEN-LAST:event_BackToMenuButton1ActionPerformed
+    }//GEN-LAST:event_PlayAgainButtonActionPerformed
     /**
      * @METHOD QuitButtonMousePressed
      * @OVERVIEW Metodo che implementa il comportamento della finestra di visualizzazione
@@ -471,8 +542,7 @@ public class ScoreFrame extends javax.swing.JFrame
      *           conseguente chiusura del gioco
      */
     private void QuitButtonMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_QuitButtonMousePressed
-        Sessione.Halt();
-        this.dispose();
+        Quit();
     }//GEN-LAST:event_QuitButtonMousePressed
 /**
  * @METHOD BackToMenuButton1MousePressed
@@ -481,11 +551,17 @@ public class ScoreFrame extends javax.swing.JFrame
  *           ritorno al menu iniziale di gioco
  * 
  */
-    private void BackToMenuButton1MousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_BackToMenuButton1MousePressed
-        Menu menu = new Menu();
-        menu.setVisible(true);
-        this.dispose();
-    }//GEN-LAST:event_BackToMenuButton1MousePressed
+    private void PlayAgainButtonMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_PlayAgainButtonMousePressed
+        PlayAgain(0);
+    }//GEN-LAST:event_PlayAgainButtonMousePressed
+
+    private void BackToMenuButtonMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_BackToMenuButtonMousePressed
+        BackToMenu();
+    }//GEN-LAST:event_BackToMenuButtonMousePressed
+
+    private void BackToMenuButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BackToMenuButtonActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_BackToMenuButtonActionPerformed
 
     /*----FINE METODI DI INTERAZIONE CON L'INTERFACCIA----*/
     
@@ -533,12 +609,13 @@ public class ScoreFrame extends javax.swing.JFrame
     /*----FINE METODI DEL CICLO DI VITA DEL THREAD----*/
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton BackToMenuButton1;
+    private javax.swing.JButton BackToMenuButton;
     private javax.swing.JLabel CPUName;
     private javax.swing.JLabel CartePrese;
     private javax.swing.JLabel CoinsCPU;
     private javax.swing.JLabel CoinsPlayer;
     private javax.swing.JLabel DenariPresi;
+    private javax.swing.JButton PlayAgainButton;
     private javax.swing.JLabel PlayerL;
     private javax.swing.JLabel PrimieraOfCPU;
     private javax.swing.JLabel PrimieraOfPlayer;

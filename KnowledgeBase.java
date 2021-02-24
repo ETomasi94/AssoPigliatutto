@@ -1,12 +1,14 @@
 /*
 ASSO PIGLIATUTTO
-PROGETTO DI ESPERIENZE DI PROGRAMMAZIONE A.A 2019-2020
+TESI DI LAUREA A.A 2020 - 2021
 
 AUTORE : ENRICO TOMASI
 NUMERO DI MATRICOLA: 503527
 
 OVERVIEW: Implementazione di un tipico gioco di carte italiano in cui il computer
 pianifica le mosse ed agisce valutando mediante ricerca in uno spazio di stati
+da parte della CPU ed un learner di rinforzo apprende a giocare per riuscire a 
+suggerire la mossa migliore da effettuare al giocatore
 */
 package assopigliatutto;
 
@@ -471,10 +473,12 @@ public class KnowledgeBase
     */
     public ArrayList<Carta> GetMostValuableCards(ArrayList<Carta> Tavolo,Punteggio Score,int PlayerCards)
     {
-        ArrayList<Carta> Res = new ArrayList<Carta>();
+        ArrayList<Carta> Res = null;
         
         if(!Tavolo.isEmpty())
         {
+            Res = new ArrayList<Carta>();
+            
             for(Carta C : Carte)
              {
                 C.CalcolaPotenziale(Tavolo, Score);
@@ -609,6 +613,7 @@ public class KnowledgeBase
 
         Dest.Settebello = Settebello;
     }
+    
     
     /*----FINE METODI GETTERS E SETTERS----*/
     

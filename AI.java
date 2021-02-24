@@ -1,14 +1,18 @@
 /*
 ASSO PIGLIATUTTO
-PROGETTO DI ESPERIENZE DI PROGRAMMAZIONE A.A 2019-2020
+TESI DI LAUREA A.A 2020 - 2021
 
 AUTORE : ENRICO TOMASI
 NUMERO DI MATRICOLA: 503527
 
 OVERVIEW: Implementazione di un tipico gioco di carte italiano in cui il computer
 pianifica le mosse ed agisce valutando mediante ricerca in uno spazio di stati
+da parte della CPU ed un learner di rinforzo apprende a giocare per riuscire a 
+suggerire la mossa migliore da effettuare al giocatore
 */
 package assopigliatutto;
+
+import java.util.concurrent.Callable;
 
 /*
     @CLASS AI
@@ -18,7 +22,7 @@ package assopigliatutto;
     dell'algoritmo di decisione MiniMax applicato ad un albero i cui nodi sono i
     possibili stati derivati da un'azione del giocatore o della CPU.
 */
-public class AI 
+public class AI implements Callable<Double>
 {
     /*----VARIABILI D'ISTANZA----*/
     
@@ -31,7 +35,13 @@ public class AI
     
     String EstablishedTurn;//Etichetta per indicare in che turno si trova lo stato di massimo guadagno
     
-   double EstablishedGain;
+    boolean Timeout;//Timeout per trovare una soluzione secondo l'algoritmo MiniMax
+    
+    double EstablishedGain;//Guadagno trovato dopo la ricerca
+    
+    int CurrentSize;//Numero di carte presenti nella mano della CPU
+    
+    Stato CurrentState;//Stato attuale
     
     /*----FINE VARIABILI D'ISTANZA----*/
 
@@ -48,11 +58,12 @@ public class AI
     public AI()
     {
         MaxGain = 0.0;
-        EstablishedCard = 0;
-        EstablishedPotential = 0;
+        EstablishedCard = -1;
+        EstablishedPotential = -1;
         EstablishedGain = 0.0;
         EstablishedLabel = "ATTUALE";
         DecisionTree = null;
+        Timeout = true;
     }
     
      /*----METODO COSTRUTTORE----*/
@@ -91,7 +102,7 @@ public class AI
        */
        if(depth > 0)
        {
-           State.GeneraSuccessore(depth,true);     
+           State.GeneraSuccessore(depth,true);
        }
        
        /*
@@ -131,28 +142,48 @@ public class AI
           potenziale, l'etichetta dello stato ed il guadagno associato
         */
            if(depth == 0 || state.Results.isEmpty())
-           {            
-                if(state.IsMax)
-                {
-                    EstablishedTurn = "CPU";
-                }
-                else
-                {
-                    EstablishedTurn = "Player";
-                }
+           {                 
+                EstablishTurn(state);
                 
-                EstablishedCard = state.SuggestedCard;
-                EstablishedPotential = state.SuggestedPotential;
-                EstablishedLabel = state.Label;
-                EstablishedGain = state.Gain;
+                EstablishState(state);
 
                 return state.Gain;
            }
 
            if(IsTurn)
            {   
-              Max = Double.NEGATIVE_INFINITY;
-
+              Max = Double.NEGATIVE_INFINITY; 
+              
+              Max = MaxBranch(Max, state, depth, alpha, beta,IsTurn);
+              
+              return Max;
+           }
+           else
+           {          
+              Min = Double.POSITIVE_INFINITY; 
+              
+              Min = MinBranch(Min, state, depth, alpha, beta, IsTurn);
+              
+              return Min;
+           }
+       }   
+    
+    /**
+     * @METHOD MaxBranch
+     * 
+     * @OVERVIEW Metodo che implementa il ramo Max dell'algoritmo di ricerca MiniMax
+     * 
+     * @param Max Valore Max da confrontare con quelli riscontrati durante la ricerca in profondita'
+     * @param state Stato da cui viene avviata la ricerca
+     * @param depth Profondita' a cui limitare la ricerca
+     * @param alpha Valore massimo incontrato durante la ricerca
+     * @param beta Valore minimo incontrato durante la ricerca
+     * @param IsTurn Valore booleano rappresentante il turno corrente, uguale a true se nello stato
+     *               in esame e' il turno della CPU, false altrimenti
+     * @return Max Valore in virgola mobile rappresentante il guadagno ottenibile dallo stato in esame
+     */
+    public double MaxBranch(Double Max,Stato state,int depth,double alpha, double beta, boolean IsTurn)
+    {
               for(Stato S : state.Results)
               {
                   double Evaluation = MiniMaxAlfaBetaPruning(S, depth-1, alpha, beta,false); 
@@ -168,12 +199,25 @@ public class AI
                }
 
                return Max;
-           }
-           else
-           {          
-              Min = Double.POSITIVE_INFINITY; 
-
-              for(Stato S : state.Results)
+    }
+    
+        /**
+     * @METHOD MinBranch
+     * 
+     * @OVERVIEW Metodo che implementa il ramo Min dell'algoritmo di ricerca MiniMax
+     * 
+     * @param Min Valore Min da confrontare con quelli riscontrati durante la ricerca in profondita'
+     * @param state Stato da cui viene avviata la ricerca
+     * @param depth Profondita' a cui limitare la ricerca
+     * @param alpha Valore massimo incontrato durante la ricerca
+     * @param beta Valore minimo incontrato durante la ricerca
+     * @param IsTurn Valore booleano rappresentante il turno corrente, uguale a true se nello stato
+     *               in esame e' il turno della CPU, false altrimenti
+     * @return Max Valore in virgola mobile rappresentante il guadagno ottenibile dallo stato in esame
+     */
+    public double MinBranch(Double Min,Stato state,int depth,double alpha, double beta, boolean IsTurn)
+    {
+       for(Stato S : state.Results)
               {
                    double Evaluation =  MiniMaxAlfaBetaPruning(S, depth-1, alpha, beta,true);  
 
@@ -187,9 +231,43 @@ public class AI
                    }     
               }
 
-              return Min;
+              return Min; 
+    }
+    
+    /**
+     * @METHOD EstablishTurn
+     * 
+     * @OVERVIEW Metodo ausiliario che esamina il turno associato allo stato in esame e chiarisce
+     *           all'utilizzatore chi sia effettivamente il giocatore associato a quel turno
+     * @param state Stato in esame
+     */
+    public void EstablishTurn(Stato state)
+    {
+        if(state.IsMax)
+           {
+               EstablishedTurn = "CPU";
            }
-       }   
+           else
+           {
+               EstablishedTurn = "Player";
+           }
+    }
+    
+    /**
+     * @METHOD EstablishState
+     * 
+     * @OVERVIEW Metodo che setta i parametri dell'AI corrente secondo le rispettive variabili d'istanza
+     *           di uno stato in esame
+     * 
+     * @param state Lo stato in esame 
+     */
+    public void EstablishState(Stato state)
+    {
+        EstablishedCard = state.SuggestedCard;
+        EstablishedPotential = state.SuggestedPotential;
+        EstablishedLabel = state.Label;
+        EstablishedGain = state.Gain;
+    }
     
     /*
         @METHOD Decide
@@ -205,7 +283,7 @@ public class AI
     {
         MaxGain = MiniMaxAlfaBetaPruning(DecisionTree,depth,Double.NEGATIVE_INFINITY,Double.POSITIVE_INFINITY,DecisionTree.IsMax);
 
-        System.out.println("MASSIMO GUADAGNO: "+EstablishedGain+" CARTA: "+EstablishedCard+" PRESA: "+EstablishedPotential+ " STATO: "+EstablishedLabel+" TURNO: "+EstablishedTurn);
+        //System.out.println("MASSIMO GUADAGNO: "+EstablishedGain+" CARTA: "+EstablishedCard+" PRESA: "+EstablishedPotential+ " STATO: "+EstablishedLabel+" TURNO: "+EstablishedTurn);
 
         return MaxGain;
     }
@@ -284,6 +362,55 @@ public class AI
     public int GetEstablishedPotential()
     {
         return EstablishedPotential;
+    }
+    
+    /**
+     * @METHOD SetState
+     * 
+     * @OVERVIEW Metodo che imposta lo stato corrente a seconda di un dato stato in input, impostando
+     *           inoltre il numero di carte nella mano della CPU
+     * 
+     * @param S Stato in esame
+     * @param size Numero di carte nella mano della CPU
+     */
+    public void SetState(Stato S,int size)
+    {
+        CurrentState = S;
+        CurrentSize = size;
+    }
+    
+    /**
+     * @METHOD UnsetState
+     * 
+     * @OVERVIEW Metodo che elimina lo stato corrente dalla memoria della CPU di gioco
+     * 
+     */
+    public void UnsetState()
+    {
+        CurrentState = null;
+        CurrentSize = 0;
+    }
+    
+    /**
+     * @METHOD SetTimeout
+     * 
+     * @OVERVIEW Metodo che indica lo scattare del timeout per la ricerca secondo
+     *           l'algoritmo MiniMax con potatura alfa-beta implementato
+     */
+    public void SetTimeout()
+    {
+        Timeout = true;
+    }
+    
+    /**
+     * @METHOD UnsetTimeout
+     * 
+     * @OVERVIEW Metodo che reimposta il timeout per la ricerca secondo l'algoritmo
+     *           MiniMax con potatura alfa-beta implementato
+     */
+    public void UnsetTimeout()
+    {
+        Timeout = false;
     }
     
     /*----FINE METODI GETTERS E SETTERS----*/
@@ -432,4 +559,35 @@ public class AI
        System.out.println("ESTABLISHED POTENTIAL: "+EstablishedPotential);
     }
      /*-------FINE METODI DI STAMPA E DEBUG-------*/
+
+
+    /**
+     * @METHOD call
+     * 
+     * @OVERVIEW Metodo che effettua una chiamata all'intelligenza artificiale
+     *           della CPU istanziata dandole il compito di effettuare la ricerca
+     *           della miglior mossa possibile tramite l'algoritmo MiniMax prima dello
+     *           scadere di un timeout impostato dalla CPU
+     * 
+     * @return Guadagno attuale nel caso la ricerca vada a buon fine, -1 altrimenti
+     * @throws Exception Se non vi sono carte valide da giocare (viene propagato null dalla ricerca)
+     */
+    @Override
+    public Double call() throws Exception 
+    {
+        double res;
+        
+        try
+        {
+            BuildTree(CurrentState,CurrentSize);
+            res = Decide(CurrentSize);
+        }
+        catch(NullPointerException e)
+        {
+            return -1.0;
+        }
+        
+        return res;
+    }
+
 }

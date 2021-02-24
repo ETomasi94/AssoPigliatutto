@@ -1,20 +1,28 @@
 /*
 ASSO PIGLIATUTTO
-PROGETTO DI ESPERIENZE DI PROGRAMMAZIONE A.A 2019-2020
+TESI DI LAUREA A.A 2020 - 2021
 
 AUTORE : ENRICO TOMASI
 NUMERO DI MATRICOLA: 503527
 
 OVERVIEW: Implementazione di un tipico gioco di carte italiano in cui il computer
 pianifica le mosse ed agisce valutando mediante ricerca in uno spazio di stati
+da parte della CPU ed un learner di rinforzo apprende a giocare per riuscire a 
+suggerire la mossa migliore da effettuare al giocatore
 */
 package assopigliatutto;
 
 import java.awt.Color;
 import java.awt.Image;
-import java.awt.event.WindowEvent;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
@@ -37,6 +45,8 @@ public final class Board extends javax.swing.JFrame
     ArrayList<Slot> PlayerHand;//Mano del giocatore
     ArrayList<Slot> CPUHand;//Mano della CPU
     ArrayList<Slot> CardsOnTable;//Tavolo dove distribuire le carte
+    
+    Slot VisualSlot;
     
     /*
         Lista di interruttori per scegliere tra una delle possibili combinazioni
@@ -81,7 +91,7 @@ public final class Board extends javax.swing.JFrame
     
     Color DefaultColor = new Color(240,240,240);//COLORE DI DEFAULT, NON CONTRASSEGNA, A RIGOR DI LOGICA, NESSUNA COMBINAZIONE
     
-        
+    Carta Suggestion;    
     /*----FINE VARIABILI D'ISTANZA----*/
     
     /*----METODO COSTRUTTORE----*/
@@ -109,16 +119,19 @@ public final class Board extends javax.swing.JFrame
         
         @OVERVIEW Metodo che inizializza una nuova sessione di gioco e ne vistualizza gli elementi a schermo
     */
-    public void NewGame(boolean DoTest)
+    public void NewGame(boolean DoTest,boolean IsTraining,Profile Profilo)
     {    /*
             Il gioco "sottostante" l'interfaccia inizia dichiarando una nuova partita
         */
-        Sessione = new Gioco(this,DoTest);
+        Sessione = new Gioco(this,DoTest,IsTraining,Profilo);
+        
+        PlayerName1.setText(Profilo.name);
                   
         /*
             Ricavo dei giocatori (istanziati come thread all'interno della classe gioco)
         */
         CPU = Sessione.GetCPU();
+        
         Player = Sessione.GetPlayer();
         
         AnalyzedCard = null;
@@ -218,8 +231,11 @@ public final class Board extends javax.swing.JFrame
         SwitchList.add(Combination37);
         SwitchList.add(Combination38);
         
+        //Inizializzazione slot carta suggerita dal BotQ
+        VisualSlot = new Slot(VisualLabel);
+        
         //Se non sono utili, gli interruttori vengono nascosti al giocatore
-        HideSwitches();
+        HideSwitches(); 
     }
     
     /*----FINE METODI DI INIZIALIZZAZIONE DELLA BOARD----*/
@@ -252,6 +268,55 @@ public final class Board extends javax.swing.JFrame
         for(JToggleButton Switch : SwitchList)
         {
             Switch.setVisible(false);
+        }
+    }
+    
+    public synchronized void RevealCard(Giocatore P,Carta Card,int CombinationIndex)
+    {
+        Slot S;
+        
+        int CardIndex = P.mano.indexOf(Card);
+        
+        if(P.nome.equals("CPU"))
+        {
+            try
+            {
+                S = CPUHand.get(CardIndex);
+                
+                S.Reveal();
+                
+                Thread.sleep(500);
+                
+                S.Hide();
+            }
+            catch(InterruptedException e)
+            {
+                e.printStackTrace();
+                Sessione.Halt();
+            }
+            
+        }
+        else
+        {
+            try
+            {
+                Carta C = Sessione.Player.mano.get(CardIndex);
+                                
+                SelectCard(CardIndex);
+                
+                HighlightCards(C,CombinationIndex,Color.ORANGE);
+                
+                Thread.sleep(1000);
+                
+                RemoveSuggestion();
+                    
+            }
+            catch(InterruptedException e)
+            {
+                e.printStackTrace();
+                Sessione.Halt();
+            }
+                
         }
     }
     
@@ -407,7 +472,7 @@ public final class Board extends javax.swing.JFrame
                   che è possibie prendere giocando la carta ed un colore evidenzia gli interruttori corrispondenti 
                   alla combinazione scelta in modo da consentirne l'individuazione
     */
-    private synchronized void HighlightCards(Carta card,int M,Color Cl)
+    public synchronized void HighlightCards(Carta card,int M,Color Cl)
     {
         ConcurrentSkipListMap<Integer,ArrayList<Carta>> Potenziale = card.Potenziale;
         
@@ -899,10 +964,146 @@ public final class Board extends javax.swing.JFrame
             Combination38.setBackground(DefaultColor);
         }
         
-    }    
+    }
+    
+    /**
+     * @METHOD GetSuggestion
+     * 
+     * @OVERVIEW Metodo che attiva il Bot in modo che esso possa analizzare
+     *          lo stato corrente e fornire un suggerimento al giocatore
+     *          relativamente alla carta da giocare
+     */
+    public synchronized void GetSuggestion()
+    {  
+        Sessione.AggiornaBot();
+        
+        int CrdIndex = Sessione.CardSuggestion();
+        int Comb = Sessione.CombinationSuggestion();
+
+        System.out.println("INDEX: "+CrdIndex+" COMBINATION: "+Comb);
+        
+        Color C = new Color(212,175,55);
+        
+        Carta Crd = ReturnCurrentCard(CrdIndex);
+        
+        SelectCard(CrdIndex);
+        
+        UnClickAll();
+        
+        HighlightCards(Crd,Comb,C);
+
+    }
+    
+    /**
+     * @METHOD SelectCard
+     * 
+     * @OVERVIEW Metodo ausiliario che seleziona la carta presente nella mano
+     *           del giocatore indicizzata dall'indice dato in input
+     * 
+     * @param index Indice della carta da selezionare
+     * 
+     * @throws IllegalArgumentException se l'indice è minore di 0 o maggiore di 2
+     *         in quanto quei valori non rappresentano una posizione possibile 
+     *         per una carta nella mano del giocatore
+     */
+    public void SelectCard(int index)
+    {
+        switch(index)
+        {
+            case 0 -> SelectCard0();
+            case 1 -> SelectCard1();
+            case 2 -> SelectCard2();
+            default -> 
+            {
+                Sessione.Halt();               
+                throw new IllegalArgumentException();
+            }
+        }
+                
+    }
+    
+    /**
+     * @METHOD ReturnCurrentCard
+     * 
+     * @OVERVIEW Metodo che restituisce la carta presente nella posizione associata
+     *           ad un indice dato in input in modo da poterla visualizzare nel pannello
+     *           dell'interfaccia relativo al suggerimento del bot
+     * 
+     * @param SlotIndex Intero rappresentante la posizione da cui ricavare la carta
+     *                  all'interno della mano del giocatore
+     * @return C Carta nella posizione data in input all'interno della mano del giocatore
+     * 
+     * @throws IllegalArgumentException se l'indice è minore di 0 o maggiore di 2
+     *         in quanto quei valori non rappresentano una posizione possibile 
+     *         per una carta nella mano del giocatore
+     */
+    public Carta ReturnCurrentCard(int SlotIndex)
+    {
+        
+        Giocatore Player = Sessione.Player;
+        
+        Carta Result = null;
+       
+        if(SlotIndex < 0 || SlotIndex > 2)
+        {
+            Sessione.Halt();
+            throw new IllegalArgumentException();
+        }
+        else
+        {
+           Result = Player.GetCard(SlotIndex);
+        }
+        
+        return Result;
+    }
+    
+    /**
+     * @METHOD RemoveSuggestion
+     * 
+     * @OVERVIEW Metodo che rimuove la carta scelta o suggerita dal pannello
+     *           dell'interfaccia relativo al suggerimento del bot
+     */
+    public synchronized void RemoveSuggestion()
+    {
+        VisualSlot.SetEmpty();
+        SuggestedComb.setText("");
+        
+        UnClickAll();
+        UnsetChoiceButtons();
+        
+        AnalyzedCard = null;
+        
+        HideSwitches();
+    }
+      
     /*----FINE METODI RELATIVI ALLA SELEZIONE DELLE CARTE----*/
        
     /*----METODI DI GIOCO----*/
+    
+    /**
+     * @METHOD ShowSelectedCard
+     * 
+     * @OVERVIEW Metodo che visualizza una carta scelta o suggerita nel pannello 
+     *           dell'interfaccia adibito al suggerimento del bot
+     * 
+     * @param C Carta da visualizzare
+     */
+    public synchronized void ShowSelectedCard(Carta C)
+    {
+        VisualSlot.AssignCard(C);
+    }
+    
+    /**
+     * @METHOD HideSelectedCard
+     * 
+     * @OVERVIEW Metodo che nasconde la carta presente nel pannello 
+     *           dell'interfaccia adibito al suggerimento del bot
+     * 
+     */
+    public synchronized void HideSelectedCard()
+    {
+        VisualSlot.SetEmpty();
+    }
     
     /*
         @METHOD SelectedCard0
@@ -914,7 +1115,7 @@ public final class Board extends javax.swing.JFrame
     */
     public synchronized void SelectCard0()
     {
-        if(Player.YourTurn())
+        if(CanInteract())
         {
             RevealSwitches();
             
@@ -922,9 +1123,11 @@ public final class Board extends javax.swing.JFrame
             {
                 Carta C = PlayerHand.get(0).Card;
             
-                C.StampaPotenziali();
+                //C.StampaPotenziali();
                 AnalyzedCard = C;
                 AnalyzeCard(C);
+                
+                VisualSlot.AssignCard(C);
             }
         }
     }
@@ -939,17 +1142,19 @@ public final class Board extends javax.swing.JFrame
     */
     public synchronized void SelectCard1()
     {
-        if(Player.YourTurn()) 
+        if(CanInteract()) 
        {
-        RevealSwitches();   
-           
+        RevealSwitches();  
+
         if(PlayerHand.get(1).HasCard())
         {
             Carta C = PlayerHand.get(1).Card;
             
-            C.StampaPotenziali();
+            //C.StampaPotenziali();
             AnalyzedCard = C;
             AnalyzeCard(C);
+            
+            VisualSlot.AssignCard(C);
         }
        }
     }
@@ -964,17 +1169,19 @@ public final class Board extends javax.swing.JFrame
     */
     public synchronized void SelectCard2()
     {
-        if(Player.YourTurn())
+        if(CanInteract())
        {
         RevealSwitches();   
-           
+
         if(PlayerHand.get(2).HasCard())
         {
             Carta C = PlayerHand.get(2).Card;
             
-            C.StampaPotenziali();
+            //C.StampaPotenziali();
             AnalyzedCard = C;
             AnalyzeCard(C);
+            
+            VisualSlot.AssignCard(C);
         }
        }
     }
@@ -1003,6 +1210,8 @@ public final class Board extends javax.swing.JFrame
         ChoosenCardCombination = 0;
         
         UnsetChoiceButtons();
+        HintButton.setSelected(false);
+        //RemoveSuggestion();
     }
     
     /*----METODI RELATIVI ALL'INTERAZIONE CON L'INTERFACCIA----*/
@@ -1053,21 +1262,21 @@ public final class Board extends javax.swing.JFrame
         Combination23 = new javax.swing.JToggleButton();
         Combination24 = new javax.swing.JToggleButton();
         TableCards = new javax.swing.JPanel();
-        TableCard10 = new javax.swing.JLabel();
-        TableCard6 = new javax.swing.JLabel();
         TableCard1 = new javax.swing.JLabel();
-        TableCard11 = new javax.swing.JLabel();
-        TableCard8 = new javax.swing.JLabel();
-        TableCard5 = new javax.swing.JLabel();
-        TableCard3 = new javax.swing.JLabel();
-        TableCard9 = new javax.swing.JLabel();
-        TableCard7 = new javax.swing.JLabel();
-        TableCard12 = new javax.swing.JLabel();
-        TableCard4 = new javax.swing.JLabel();
         TableCard2 = new javax.swing.JLabel();
+        TableCard3 = new javax.swing.JLabel();
+        TableCard4 = new javax.swing.JLabel();
+        TableCard5 = new javax.swing.JLabel();
+        TableCard6 = new javax.swing.JLabel();
+        TableCard7 = new javax.swing.JLabel();
+        TableCard8 = new javax.swing.JLabel();
+        TableCard9 = new javax.swing.JLabel();
+        TableCard10 = new javax.swing.JLabel();
+        TableCard11 = new javax.swing.JLabel();
+        TableCard12 = new javax.swing.JLabel();
         StatusOfPlayer = new javax.swing.JPanel();
         PlayerTurnLabel = new javax.swing.JLabel();
-        CPUName1 = new javax.swing.JLabel();
+        PlayerName1 = new javax.swing.JLabel();
         StatusOfCpU = new javax.swing.JPanel();
         CPUName = new javax.swing.JLabel();
         CPUTurnLabel = new javax.swing.JLabel();
@@ -1086,11 +1295,14 @@ public final class Board extends javax.swing.JFrame
         PlayerLabel1 = new javax.swing.JLabel();
         PlayerLabel2 = new javax.swing.JLabel();
         PlayerLabel3 = new javax.swing.JLabel();
+        HintPanel = new javax.swing.JPanel();
+        HintButton = new javax.swing.JToggleButton();
+        VisualLabel = new javax.swing.JLabel();
+        SuggestedComb = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("ASSO PIGLIATUTTO");
         setLocationByPlatform(true);
-        setMaximumSize(new java.awt.Dimension(1310, 790));
         setMinimumSize(new java.awt.Dimension(1310, 790));
         setName("Board"); // NOI18N
         setResizable(false);
@@ -1832,20 +2044,6 @@ public final class Board extends javax.swing.JFrame
         TableCards.setAlignmentY(0.0F);
         TableCards.setOpaque(false);
 
-        TableCard10.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        TableCard10.setAlignmentY(0.0F);
-        TableCard10.setMaximumSize(new java.awt.Dimension(100, 160));
-        TableCard10.setMinimumSize(new java.awt.Dimension(100, 160));
-        TableCard10.setPreferredSize(new java.awt.Dimension(100, 160));
-        TableCard10.setRequestFocusEnabled(false);
-
-        TableCard6.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        TableCard6.setAlignmentY(0.0F);
-        TableCard6.setMaximumSize(new java.awt.Dimension(100, 160));
-        TableCard6.setMinimumSize(new java.awt.Dimension(100, 160));
-        TableCard6.setPreferredSize(new java.awt.Dimension(100, 160));
-        TableCard6.setRequestFocusEnabled(false);
-
         TableCard1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         TableCard1.setAlignmentY(0.0F);
         TableCard1.setMaximumSize(new java.awt.Dimension(100, 160));
@@ -1853,26 +2051,12 @@ public final class Board extends javax.swing.JFrame
         TableCard1.setPreferredSize(new java.awt.Dimension(100, 160));
         TableCard1.setRequestFocusEnabled(false);
 
-        TableCard11.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        TableCard11.setAlignmentY(0.0F);
-        TableCard11.setMaximumSize(new java.awt.Dimension(100, 160));
-        TableCard11.setMinimumSize(new java.awt.Dimension(100, 160));
-        TableCard11.setPreferredSize(new java.awt.Dimension(100, 160));
-        TableCard11.setRequestFocusEnabled(false);
-
-        TableCard8.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        TableCard8.setAlignmentY(0.0F);
-        TableCard8.setMaximumSize(new java.awt.Dimension(100, 160));
-        TableCard8.setMinimumSize(new java.awt.Dimension(100, 160));
-        TableCard8.setPreferredSize(new java.awt.Dimension(100, 160));
-        TableCard8.setRequestFocusEnabled(false);
-
-        TableCard5.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        TableCard5.setAlignmentY(0.0F);
-        TableCard5.setMaximumSize(new java.awt.Dimension(100, 160));
-        TableCard5.setMinimumSize(new java.awt.Dimension(100, 160));
-        TableCard5.setPreferredSize(new java.awt.Dimension(100, 160));
-        TableCard5.setRequestFocusEnabled(false);
+        TableCard2.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        TableCard2.setAlignmentY(0.0F);
+        TableCard2.setMaximumSize(new java.awt.Dimension(100, 160));
+        TableCard2.setMinimumSize(new java.awt.Dimension(100, 160));
+        TableCard2.setPreferredSize(new java.awt.Dimension(100, 160));
+        TableCard2.setRequestFocusEnabled(false);
 
         TableCard3.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         TableCard3.setAlignmentY(0.0F);
@@ -1881,12 +2065,26 @@ public final class Board extends javax.swing.JFrame
         TableCard3.setPreferredSize(new java.awt.Dimension(100, 160));
         TableCard3.setRequestFocusEnabled(false);
 
-        TableCard9.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        TableCard9.setAlignmentY(0.0F);
-        TableCard9.setMaximumSize(new java.awt.Dimension(100, 160));
-        TableCard9.setMinimumSize(new java.awt.Dimension(100, 160));
-        TableCard9.setPreferredSize(new java.awt.Dimension(100, 160));
-        TableCard9.setRequestFocusEnabled(false);
+        TableCard4.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        TableCard4.setAlignmentY(0.0F);
+        TableCard4.setMaximumSize(new java.awt.Dimension(100, 160));
+        TableCard4.setMinimumSize(new java.awt.Dimension(100, 160));
+        TableCard4.setPreferredSize(new java.awt.Dimension(100, 160));
+        TableCard4.setRequestFocusEnabled(false);
+
+        TableCard5.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        TableCard5.setAlignmentY(0.0F);
+        TableCard5.setMaximumSize(new java.awt.Dimension(100, 160));
+        TableCard5.setMinimumSize(new java.awt.Dimension(100, 160));
+        TableCard5.setPreferredSize(new java.awt.Dimension(100, 160));
+        TableCard5.setRequestFocusEnabled(false);
+
+        TableCard6.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        TableCard6.setAlignmentY(0.0F);
+        TableCard6.setMaximumSize(new java.awt.Dimension(100, 160));
+        TableCard6.setMinimumSize(new java.awt.Dimension(100, 160));
+        TableCard6.setPreferredSize(new java.awt.Dimension(100, 160));
+        TableCard6.setRequestFocusEnabled(false);
 
         TableCard7.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         TableCard7.setAlignmentY(0.0F);
@@ -1895,26 +2093,40 @@ public final class Board extends javax.swing.JFrame
         TableCard7.setPreferredSize(new java.awt.Dimension(100, 160));
         TableCard7.setRequestFocusEnabled(false);
 
+        TableCard8.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        TableCard8.setAlignmentY(0.0F);
+        TableCard8.setMaximumSize(new java.awt.Dimension(100, 160));
+        TableCard8.setMinimumSize(new java.awt.Dimension(100, 160));
+        TableCard8.setPreferredSize(new java.awt.Dimension(100, 160));
+        TableCard8.setRequestFocusEnabled(false);
+
+        TableCard9.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        TableCard9.setAlignmentY(0.0F);
+        TableCard9.setMaximumSize(new java.awt.Dimension(100, 160));
+        TableCard9.setMinimumSize(new java.awt.Dimension(100, 160));
+        TableCard9.setPreferredSize(new java.awt.Dimension(100, 160));
+        TableCard9.setRequestFocusEnabled(false);
+
+        TableCard10.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        TableCard10.setAlignmentY(0.0F);
+        TableCard10.setMaximumSize(new java.awt.Dimension(100, 160));
+        TableCard10.setMinimumSize(new java.awt.Dimension(100, 160));
+        TableCard10.setPreferredSize(new java.awt.Dimension(100, 160));
+        TableCard10.setRequestFocusEnabled(false);
+
+        TableCard11.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        TableCard11.setAlignmentY(0.0F);
+        TableCard11.setMaximumSize(new java.awt.Dimension(100, 160));
+        TableCard11.setMinimumSize(new java.awt.Dimension(100, 160));
+        TableCard11.setPreferredSize(new java.awt.Dimension(100, 160));
+        TableCard11.setRequestFocusEnabled(false);
+
         TableCard12.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         TableCard12.setAlignmentY(0.0F);
         TableCard12.setMaximumSize(new java.awt.Dimension(100, 160));
         TableCard12.setMinimumSize(new java.awt.Dimension(100, 160));
         TableCard12.setPreferredSize(new java.awt.Dimension(100, 160));
         TableCard12.setRequestFocusEnabled(false);
-
-        TableCard4.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        TableCard4.setAlignmentY(0.0F);
-        TableCard4.setMaximumSize(new java.awt.Dimension(100, 160));
-        TableCard4.setMinimumSize(new java.awt.Dimension(100, 160));
-        TableCard4.setPreferredSize(new java.awt.Dimension(100, 160));
-        TableCard4.setRequestFocusEnabled(false);
-
-        TableCard2.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        TableCard2.setAlignmentY(0.0F);
-        TableCard2.setMaximumSize(new java.awt.Dimension(100, 160));
-        TableCard2.setMinimumSize(new java.awt.Dimension(100, 160));
-        TableCard2.setPreferredSize(new java.awt.Dimension(100, 160));
-        TableCard2.setRequestFocusEnabled(false);
 
         javax.swing.GroupLayout TableCardsLayout = new javax.swing.GroupLayout(TableCards);
         TableCards.setLayout(TableCardsLayout);
@@ -1935,9 +2147,9 @@ public final class Board extends javax.swing.JFrame
                 .addComponent(TableCard6, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(TableCard7, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(TableCard8, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGap(14, 14, 14)
                 .addComponent(TableCard9, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(TableCard10, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -1952,12 +2164,12 @@ public final class Board extends javax.swing.JFrame
             .addGroup(TableCardsLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(TableCardsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(TableCard7, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(TableCard1, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(TableCard3, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(TableCard4, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(TableCard5, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(TableCard6, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(TableCard7, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(TableCard8, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(TableCard9, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(TableCard10, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -1974,7 +2186,7 @@ public final class Board extends javax.swing.JFrame
             .addGroup(CardsAndSwitchesPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(CardsAndSwitchesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(FirstHalfOfSwitches, javax.swing.GroupLayout.DEFAULT_SIZE, 1290, Short.MAX_VALUE)
+                    .addComponent(FirstHalfOfSwitches, javax.swing.GroupLayout.DEFAULT_SIZE, 1302, Short.MAX_VALUE)
                     .addGroup(CardsAndSwitchesPanelLayout.createSequentialGroup()
                         .addGroup(CardsAndSwitchesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(SecondHalfOfSwitches, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -2001,13 +2213,18 @@ public final class Board extends javax.swing.JFrame
         PlayerTurnLabel.setForeground(new java.awt.Color(255, 0, 0));
         PlayerTurnLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
 
-        CPUName1.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
-        CPUName1.setForeground(new java.awt.Color(153, 0, 153));
-        CPUName1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        CPUName1.setText("GIOCATORE");
-        CPUName1.setMaximumSize(new java.awt.Dimension(475, 35));
-        CPUName1.setMinimumSize(new java.awt.Dimension(475, 35));
-        CPUName1.setPreferredSize(new java.awt.Dimension(475, 35));
+        PlayerName1.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
+        PlayerName1.setForeground(new java.awt.Color(153, 0, 153));
+        PlayerName1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        PlayerName1.setText("GIOCATORE");
+        PlayerName1.setMaximumSize(new java.awt.Dimension(475, 35));
+        PlayerName1.setMinimumSize(new java.awt.Dimension(475, 35));
+        PlayerName1.setPreferredSize(new java.awt.Dimension(475, 35));
+        PlayerName1.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                PlayerName1MousePressed(evt);
+            }
+        });
 
         javax.swing.GroupLayout StatusOfPlayerLayout = new javax.swing.GroupLayout(StatusOfPlayer);
         StatusOfPlayer.setLayout(StatusOfPlayerLayout);
@@ -2016,7 +2233,7 @@ public final class Board extends javax.swing.JFrame
             .addGroup(StatusOfPlayerLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(StatusOfPlayerLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(CPUName1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(PlayerName1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(PlayerTurnLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
@@ -2026,7 +2243,7 @@ public final class Board extends javax.swing.JFrame
                 .addGap(6, 6, 6)
                 .addComponent(PlayerTurnLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 88, Short.MAX_VALUE)
-                .addComponent(CPUName1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(PlayerName1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
 
@@ -2043,6 +2260,11 @@ public final class Board extends javax.swing.JFrame
         CPUName.setMaximumSize(new java.awt.Dimension(475, 35));
         CPUName.setMinimumSize(new java.awt.Dimension(475, 35));
         CPUName.setPreferredSize(new java.awt.Dimension(475, 35));
+        CPUName.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                CPUNameMousePressed(evt);
+            }
+        });
 
         CPUTurnLabel.setFont(new java.awt.Font("Tahoma", 1, 36)); // NOI18N
         CPUTurnLabel.setForeground(new java.awt.Color(102, 255, 0));
@@ -2194,14 +2416,8 @@ public final class Board extends javax.swing.JFrame
         PlayerLabel1.setPreferredSize(new java.awt.Dimension(100, 160));
         PlayerLabel1.setRequestFocusEnabled(false);
         PlayerLabel1.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                PlayerLabel1MouseClicked(evt);
-            }
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                PlayerLabel1MouseEntered(evt);
-            }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                PlayerLabel1MouseExited(evt);
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                PlayerLabel1MousePressed(evt);
             }
         });
 
@@ -2210,14 +2426,8 @@ public final class Board extends javax.swing.JFrame
         PlayerLabel2.setPreferredSize(new java.awt.Dimension(100, 160));
         PlayerLabel2.setRequestFocusEnabled(false);
         PlayerLabel2.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                PlayerLabel2MouseClicked(evt);
-            }
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                PlayerLabel2MouseEntered(evt);
-            }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                PlayerLabel2MouseExited(evt);
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                PlayerLabel2MousePressed(evt);
             }
         });
 
@@ -2226,14 +2436,8 @@ public final class Board extends javax.swing.JFrame
         PlayerLabel3.setPreferredSize(new java.awt.Dimension(100, 160));
         PlayerLabel3.setRequestFocusEnabled(false);
         PlayerLabel3.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                PlayerLabel3MouseClicked(evt);
-            }
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                PlayerLabel3MouseEntered(evt);
-            }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                PlayerLabel3MouseExited(evt);
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                PlayerLabel3MousePressed(evt);
             }
         });
 
@@ -2311,6 +2515,54 @@ public final class Board extends javax.swing.JFrame
                 .addContainerGap())
         );
 
+        HintPanel.setBackground(new java.awt.Color(102, 255, 102));
+
+        HintButton.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
+        HintButton.setForeground(new java.awt.Color(102, 255, 0));
+        HintButton.setText("SUGGERIMENTO");
+        HintButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                HintButtonMousePressed(evt);
+            }
+        });
+
+        VisualLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        VisualLabel.setAlignmentY(0.0F);
+        VisualLabel.setMaximumSize(new java.awt.Dimension(100, 160));
+        VisualLabel.setMinimumSize(new java.awt.Dimension(100, 160));
+        VisualLabel.setPreferredSize(new java.awt.Dimension(100, 160));
+        VisualLabel.setRequestFocusEnabled(false);
+
+        SuggestedComb.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
+        SuggestedComb.setForeground(new java.awt.Color(204, 204, 0));
+        SuggestedComb.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+
+        javax.swing.GroupLayout HintPanelLayout = new javax.swing.GroupLayout(HintPanel);
+        HintPanel.setLayout(HintPanelLayout);
+        HintPanelLayout.setHorizontalGroup(
+            HintPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(HintPanelLayout.createSequentialGroup()
+                .addGap(37, 37, 37)
+                .addComponent(VisualLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 19, Short.MAX_VALUE)
+                .addComponent(SuggestedComb, javax.swing.GroupLayout.PREFERRED_SIZE, 85, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addComponent(HintButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        HintPanelLayout.setVerticalGroup(
+            HintPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, HintPanelLayout.createSequentialGroup()
+                .addComponent(HintButton, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(HintPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(HintPanelLayout.createSequentialGroup()
+                        .addGap(4, 4, 4)
+                        .addComponent(VisualLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(HintPanelLayout.createSequentialGroup()
+                        .addGap(52, 52, 52)
+                        .addComponent(SuggestedComb, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
         javax.swing.GroupLayout BoardPanelLayout = new javax.swing.GroupLayout(BoardPanel);
         BoardPanel.setLayout(BoardPanelLayout);
         BoardPanelLayout.setHorizontalGroup(
@@ -2326,7 +2578,9 @@ public final class Board extends javax.swing.JFrame
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(StatusOfCpU, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(BoardPanelLayout.createSequentialGroup()
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addGap(106, 106, 106)
+                        .addComponent(HintPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(PlayerControls, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(StatusOfPlayer, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
@@ -2341,10 +2595,14 @@ public final class Board extends javax.swing.JFrame
                     .addComponent(StatusOfCpU, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addGap(7, 7, 7)
                 .addComponent(CardsAndSwitchesPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 314, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGap(18, 18, 18)
                 .addGroup(BoardPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(PlayerControls, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(StatusOfPlayer, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(BoardPanelLayout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addGroup(BoardPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(PlayerControls, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(StatusOfPlayer, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addComponent(HintPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addGap(19, 19, 19))
         );
 
@@ -2361,42 +2619,6 @@ public final class Board extends javax.swing.JFrame
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
-    private void PlayerLabel3MouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_PlayerLabel3MouseExited
-
-    }//GEN-LAST:event_PlayerLabel3MouseExited
-
-    private void PlayerLabel3MouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_PlayerLabel3MouseEntered
-
-    }//GEN-LAST:event_PlayerLabel3MouseEntered
-
-    private void PlayerLabel3MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_PlayerLabel3MouseClicked
-        SelectCard2();
-    }//GEN-LAST:event_PlayerLabel3MouseClicked
-
-    private void PlayerLabel2MouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_PlayerLabel2MouseExited
-
-    }//GEN-LAST:event_PlayerLabel2MouseExited
-
-    private void PlayerLabel2MouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_PlayerLabel2MouseEntered
-
-    }//GEN-LAST:event_PlayerLabel2MouseEntered
-
-    private void PlayerLabel2MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_PlayerLabel2MouseClicked
-        SelectCard1();
-    }//GEN-LAST:event_PlayerLabel2MouseClicked
-
-    private void PlayerLabel1MouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_PlayerLabel1MouseExited
-
-    }//GEN-LAST:event_PlayerLabel1MouseExited
-
-    private void PlayerLabel1MouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_PlayerLabel1MouseEntered
-
-    }//GEN-LAST:event_PlayerLabel1MouseEntered
-
-    private void PlayerLabel1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_PlayerLabel1MouseClicked
-        SelectCard0();
-    }//GEN-LAST:event_PlayerLabel1MouseClicked
 
     private void Combination1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_Combination1ActionPerformed
         // TODO add your handling code here:
@@ -2544,11 +2766,15 @@ public final class Board extends javax.swing.JFrame
         
         AnalyzedCard = null;
         
+        HideSelectedCard();
+        
         HideSwitches();
     }//GEN-LAST:event_UndoButtonMousePressed
 
     private void OkButtonMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_OkButtonMousePressed
         PlayCard(ChoosenCardCombination,AnalyzedCard);
+        RemoveSuggestion();
+        HideSelectedCard();
         HideSwitches();
     }//GEN-LAST:event_OkButtonMousePressed
 
@@ -2760,7 +2986,7 @@ public final class Board extends javax.swing.JFrame
         if(IsSelected(29,Combination29))
        {
             UnClickAll();
-            HighlightCards(AnalyzedCard,25,C5);
+            HighlightCards(AnalyzedCard,29,C5);
        }
        else
        {
@@ -2874,6 +3100,51 @@ public final class Board extends javax.swing.JFrame
 
     }//GEN-LAST:event_Combination38ActionPerformed
 
+    private void HintButtonMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_HintButtonMousePressed
+        if(CanInteract())
+            {
+            if(HintButton.isSelected())
+            {
+                RemoveSuggestion();
+            }
+            else
+            {
+                GetSuggestion();
+            }
+        }
+    }//GEN-LAST:event_HintButtonMousePressed
+
+    private void PlayerName1MousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_PlayerName1MousePressed
+         GeneralDump();   
+    }//GEN-LAST:event_PlayerName1MousePressed
+
+    private void CPUNameMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_CPUNameMousePressed
+        DumpDatabase();
+    }//GEN-LAST:event_CPUNameMousePressed
+
+    private void PlayerLabel1MousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_PlayerLabel1MousePressed
+        SelectCard0();
+    }//GEN-LAST:event_PlayerLabel1MousePressed
+
+    private void PlayerLabel2MousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_PlayerLabel2MousePressed
+        SelectCard1();
+    }//GEN-LAST:event_PlayerLabel2MousePressed
+
+    private void PlayerLabel3MousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_PlayerLabel3MousePressed
+        SelectCard2();
+    }//GEN-LAST:event_PlayerLabel3MousePressed
+
+    /**
+     * @METHOD CanInteract
+     * 
+     * @OVERVIEW Metodo che consente ad un giocatore umano di interagire
+     *           con l'interfaccia solo se è il suo turno o se il bot
+     *           non è in azione
+     */
+    public boolean CanInteract()
+    {
+        return (Player.YourTurn() && (!Sessione.TrainingGame));
+    }
     /*----FINE METODI RELATIVI ALL'INTERAZIONE CON L'INTERFACCIA----*/
     
     /*----METODI DEL CICLO DI VITA DEL THREAD----*/
@@ -2886,7 +3157,19 @@ public final class Board extends javax.swing.JFrame
     */
     public void Exit()
     {
-        this.dispatchEvent(new WindowEvent(this,WindowEvent.WINDOW_CLOSING));
+        Menu menu = new Menu();
+        menu.setVisible(true);
+        this.dispose();
+    }
+    
+    public void RestartGame(int TimesToTrain)
+    {
+        Menu menu = new Menu();
+        menu.setVisible(true);
+        
+        menu.StartGame(false,false,TimesToTrain);
+
+        this.dispose();
     }
     
     /*
@@ -2912,6 +3195,176 @@ public final class Board extends javax.swing.JFrame
         Scores.setVisible(true);
         this.dispose();
     }
+    
+    /**
+     * @METHOD GeneralDump
+     * 
+     * @OVERVIEW Metodo che quando si clicca sul nome del giocatore visualizzato
+     *           sull'interfaccia stampa in output una sintesi dettagliata dello
+     *           stato corrente di gioco denominata in base a data ed ora corrente
+     *           all'interno della cartella "src/main/statedumps/text/"
+     */
+    public void GeneralDump()
+    {
+        {
+            Sessione.Test.Update();
+      
+            Sessione.Test.WriteDump(); 
+             
+            String TimeStamp = new SimpleDateFormat("HHmm").format(new Date());
+            
+            String Fault;
+            
+            if(Sessione.CPU.turn)
+            {
+                Fault = "CPU";
+            }
+            else
+            {
+                Fault = "Player";
+            }
+            
+            String Path = "src/main/statedumps/text/State number "+TimeStamp+".txt";
+            
+            try (FileWriter FileOut = new FileWriter(Path)) 
+            {
+                FileOut.write("HAND: \n");
+                
+                if(!Sessione.Player.mano.isEmpty())
+                {
+                for(Carta C : Sessione.Player.mano)
+                {
+                    FileOut.write(C.nome+" | "+C.Potenziale.size()+"\n");
+                    
+                    Set<Map.Entry<Integer,ArrayList<Carta>>> Es = C.Potenziale.entrySet();
+                    
+                    for(Entry<Integer,ArrayList<Carta>> ENTRY : Es)
+                    {
+                        FileOut.write(" -POTENTIAL NUMBER: "+ENTRY.getKey() + "SIZE: "+ENTRY.getValue().size()+"\n");
+                        
+                        for(Carta Crd : ENTRY.getValue())
+                        {
+                            FileOut.write("-"+Crd.nome);
+                        }
+                        
+                        FileOut.write("\n \n");
+                    }
+                }
+                }
+                else
+                {
+                    FileOut.write("*EMPTY*\n \n");
+                }
+
+                FileOut.write("CPU: \n");
+                
+                if(!Sessione.CPU.mano.isEmpty())
+                {
+                for(Carta C : Sessione.CPU.mano)
+                {
+                    FileOut.write(C.nome+" | "+C.Potenziale.size()+"\n");
+                    
+                    Set<Map.Entry<Integer,ArrayList<Carta>>> Es = C.Potenziale.entrySet();
+                    
+                    for(Entry<Integer,ArrayList<Carta>> ENTRY : Es)
+                    {
+                        FileOut.write("POTENTIAL NUMBER: "+ENTRY.getKey() + " SIZE: "+ENTRY.getValue().size()+"\n");
+                        for(Carta Crd : ENTRY.getValue())
+                        {
+                            FileOut.write("-"+Crd.nome);
+                        }
+                        
+                        FileOut.write("\n \n");
+                    }
+                }
+                }
+                else
+                {
+                    FileOut.write("*EMPTY*\n \n");
+                }
+                
+                FileOut.write("CARDS ON TABLE:\n");
+                
+                if(Sessione.Tavolo.isEmpty())
+                {
+                    FileOut.write("*EMPTY*\n");
+                }
+                else
+                {
+                    for(Carta C : Sessione.Tavolo)
+                    {
+                        FileOut.write(C.nome+"-");
+                    }
+                }
+                    
+                  FileOut.write("\n");  
+                  
+                  Stato S = Sessione.WatchState(TimeStamp);
+                  
+                  FileOut.write("STATE SERIAL:"+S.SerialNumber()+"\n");
+                  
+                  FileOut.write("TURN: "+Fault+"\n");
+                  
+                  FileOut.write("CARDS ON DECK: "+Sessione.Carte.size()+"\n");
+                            
+                  FileOut.write("SUGGESTED CARD: "+Sessione.BotQ.ReturnCardIndex()+"\n");
+                  
+                  FileOut.write("SUGGESTED COMBINATION: "+Sessione.BotQ.Comb+"\n");
+                  
+                  FileOut.write("CPU RECEIVED: "+Sessione.CPU.LastCardReceived+" COMBINATION: "+Sessione.CPU.LastCombinationReceived+"\n");
+                  
+                  FileOut.write("AVAILABLE ACTIONS: ");
+                  
+                  if(Sessione.BotQ.MyActions != null)
+                  {
+                    for(Integer I : Sessione.BotQ.MyActions)
+                    {
+                        FileOut.write(+I+"/");
+                    }
+                  }
+                  else
+                  {
+                      FileOut.write("*NO ACTION*");
+                  }
+                  
+                  FileOut.write("\n");
+                  FileOut.write("SIZE OF PLAYER DATABASE: "+Sessione.Database.SizeOfDatabase()+"\n \n \n \n");
+                  
+                  FileOut.write("ANALYZING CPU AND AI STATE:\n");
+                  
+                  FileOut.write("CARD INDEX: "+Sessione.CPU.Intelligence.EstablishedCard+"\n");
+                  FileOut.write("COMBINATION INDEX: "+Sessione.CPU.Intelligence.EstablishedPotential+"\n");
+                  FileOut.write("GAIN VALUE: "+Sessione.CPU.Intelligence.EstablishedGain+"\n");
+                  FileOut.write("THREADPOOL SHUTDOWN: "+Sessione.CPU.DecisionCapability.isShutdown()+"| THREADPOOL TERMINATED: "+Sessione.CPU.DecisionCapability.isTerminated()+"\n");
+                  FileOut.write("TIMEOUT: "+Sessione.CPU.Timeout+"\n");
+                  
+                  System.out.println("DUMP IS AVAILABLE AT: "+Path);
+                
+                FileOut.close();
+            } 
+      catch (IOException i) 
+      {
+         i.printStackTrace();
+      }
+            
+         }
+    }
+    
+    /**
+     * @METHOD DumpDatabase
+     * 
+     * @OVERVIEW Metodo di debug che, al clic sul nome della CPU all'interno 
+     *           dell'interfaccia di gioco, stampa in un file di testo il database
+     *           degli stati del giocatore in formato leggibile all'interno della
+     *           cartella ""src/main/". Il file di testo è denominato in base
+     *           all'orario corrente.
+     */
+    public void DumpDatabase()
+    {
+        Sessione.Gamer.DB.DataBaseDump(Sessione.Gamer.name);
+    }
+    
+    
 
     /*----METODO MAIN----*/
     
@@ -2935,7 +3388,6 @@ public final class Board extends javax.swing.JFrame
     private javax.swing.JPanel CPUArea;
     private javax.swing.JPanel CPUCards;
     private javax.swing.JLabel CPUName;
-    private javax.swing.JLabel CPUName1;
     private javax.swing.JLabel CPUTurnLabel;
     private javax.swing.JPanel CardsAndSwitchesPanel;
     private javax.swing.JToggleButton Combination1;
@@ -2979,6 +3431,8 @@ public final class Board extends javax.swing.JFrame
     private javax.swing.JLabel DeckLabelCPU;
     private javax.swing.JLabel DeckLabelPlayer;
     private javax.swing.JPanel FirstHalfOfSwitches;
+    private javax.swing.JToggleButton HintButton;
+    private javax.swing.JPanel HintPanel;
     private javax.swing.JButton OkButton;
     private javax.swing.JLabel OpponentLabel1;
     private javax.swing.JLabel OpponentLabel2;
@@ -2989,10 +3443,12 @@ public final class Board extends javax.swing.JFrame
     private javax.swing.JLabel PlayerLabel1;
     private javax.swing.JLabel PlayerLabel2;
     private javax.swing.JLabel PlayerLabel3;
+    private javax.swing.JLabel PlayerName1;
     private javax.swing.JLabel PlayerTurnLabel;
     private javax.swing.JPanel SecondHalfOfSwitches;
     private javax.swing.JPanel StatusOfCpU;
     private javax.swing.JPanel StatusOfPlayer;
+    private javax.swing.JLabel SuggestedComb;
     private javax.swing.JLabel TableCard1;
     private javax.swing.JLabel TableCard10;
     private javax.swing.JLabel TableCard11;
@@ -3007,5 +3463,6 @@ public final class Board extends javax.swing.JFrame
     private javax.swing.JLabel TableCard9;
     private javax.swing.JPanel TableCards;
     private javax.swing.JButton UndoButton;
+    private javax.swing.JLabel VisualLabel;
     // End of variables declaration//GEN-END:variables
 }

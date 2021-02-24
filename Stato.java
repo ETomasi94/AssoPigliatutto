@@ -1,6 +1,6 @@
 /*
 ASSO PIGLIATUTTO
-PROGETTO DI ESPERIENZE DI PROGRAMMAZIONE A.A 2019-2020
+TESI DI LAUREA A.A 2020 - 2021
 
 AUTORE : ENRICO TOMASI
 NUMERO DI MATRICOLA: 503527
@@ -10,18 +10,20 @@ pianifica le mosse ed agisce valutando mediante ricerca in uno spazio di stati
 */
 package assopigliatutto;
 
+import java.io.Serializable;
 import java.util.ArrayList;
-
+import java.util.Collections;
 /**
  * @CLASS Stato
  * 
- * @OVERVIEW Classe che implementa uno stato dell'albero di gioco contrassegnato da alcune
- *           variabili che rappresentano la situazione attuale o una situazione ipotizzata
- *           da un susseguirsi di scelte contrassegnate anch'esse da stati dell'albero di gioco
+ * @OVERVIEW Classe che implementa uno stato di gioco reale o ipotizzato, 
+ *           disponibile anche all'interno di una struttura ad albero
 */
-public final class Stato 
+public final class Stato implements Serializable
 {   
     /*----CONFIGURAZIONE RELATIVA AD UNO STATO----*/
+    int Serial;
+    
     KnowledgeBase Actual;//Knowledge Base dello stato
     
     ArrayList<Carta> Table;//Configurazione del tavolo
@@ -72,6 +74,8 @@ public final class Stato
      * @param S : Punteggio del giocatore osservato in quel momento
      * @param Q : Booleano che indica se è il turno della CPU o del giocatore
      * @param PC : Intero che indica il numero di carte residue nella mano dell'avversario
+     * @param InitialCard : Carta suggerita dall'intelligenza artificiale alla creazione dello stato
+     * @param InitialPotential : Presa suggerita dall'intelligenza artificiale alla creazione dello stato
      * 
      * @RETURNS State : Stato corrente
      */
@@ -145,80 +149,35 @@ public final class Stato
     */
     public synchronized void GeneraSuccessore(int depth,boolean start)
     {
+       try
+        {
         if(depth >= 0)
         {
             boolean turn = !this.IsMax;
 
             if(turn)//CASO MAX (TURNO CPU)
             {
-              if(!Hand.isEmpty())
-              {
-                for(Carta C : Hand)//Vengono considerate le carte presenti all'interno della mano del giocatore
-                {
-                    if(C.IsMarked() && !Table.isEmpty())
-                    {                
-                        int Sc = C.MaxPotential;
-                        int CardToPropagate = Hand.indexOf(C);
-                        
-                        Stato S1;
-                        
-                        if(start)
-                        {
-                            S1 = new Stato(Label+"-> "+C.nome+"/"+Sc,FT(Table,C,Sc),FH(Hand,C),Actual,FS(Score,C),turn,PlayerCards,CardToPropagate,Sc);
-                            SetSuggestedCard(Hand,S1,C,Hand.indexOf(C),Sc);
-                        }
-                        else
-                        {
-                            S1 = new Stato(Label+"-> "+C.nome+"/"+Sc,FT(Table,C,Sc),FH(Hand,C),Actual,FS(Score,C),turn,PlayerCards,SuggestedCard,SuggestedPotential);
-                            SetSuggestedCard(Hand,S1,C,SuggestedCard,SuggestedPotential);
-                        }
-
-                        Results.add(S1);
-                    }
-                   }
-                }
+              PredictYourNextMove(turn,start);
             }
             else//CASO MIN (TURNO GIOCATORE)
             {
-              if(!Opponent.isEmpty())
-              {
-                for(Carta C : Opponent)//Vengono considerate le tre carte più promettenti per l'avversario
-                {
-                    if(C.IsMarked() && !Table.isEmpty())
-                    {                
-
-                               Stato S1;
-                                int Sc = C.MaxPotential;
-                                int CardToPropagate = Opponent.indexOf(C);
               
-                                if(start)
-                                {
-                                    S1 = new Stato(Label+"-> "+C.nome+"/"+Sc,FT(Table,C,Sc),Hand,FKB(Actual,C),Score,turn,PlayerCards-1,CardToPropagate,Sc);
-                                    SetSuggestedCard(Opponent,S1,C,Opponent.indexOf(C),Sc);
-                                }
-                                else
-                                {
-                                    S1 = new Stato(Label+"-> "+C.nome+"/"+Sc,FT(Table,C,Sc),Hand,FKB(Actual,C),Score,turn,PlayerCards-1,SuggestedCard,SuggestedPotential);
-                                    SetSuggestedCard(Opponent,S1,C,SuggestedCard,SuggestedPotential);
-                                }
-                                
-                                S1.Opponent = FOPP(Opponent,C);
-                                S1.OpponentScore = FS(OpponentScore,C);
-
-                                Results.add(S1);
-
-                    }
-                }
-              }
+              PredictOpponentMove(turn,start);
             }
 
-            if(Results != null)
+            if(Results != null && (!Results.isEmpty()))
             {
                 for(Stato S1 : Results)
                 {
                     S1.GeneraSuccessore(depth-1,false);
                 }
             }
+        }
+        }
+        catch(NullPointerException e)
+        {
+            Results = null;
+            return;
         }
     }
     
@@ -246,6 +205,124 @@ public final class Stato
      {
          S.Gain = 0.0;
      }
+    }
+    
+    /**
+     * @METHOD PredictYourNextMove
+     * 
+     * @OVERVIEW Metodo che, all'interno della generazione di uno spazio di stati
+     *           geneara uno stato risultante dalla mossa del giocatore corrente
+     * 
+     * @param turn Valore booleano che indica che è il turno del giocatore corrente
+     * @param start  Valore booleano che indica se il metodo è stato chiamato per
+     *                la prima volta o meno, in modo da decidere se la carta attuale 
+     *                che porterà allo stato con guadagno massimo deve essere istanziata 
+     *                 (nel caso start sia uguale a true) oppure propagata allo stato 
+     *                successore (nel caso start sia uguale a false).
+     */
+    public void PredictYourNextMove(boolean turn,boolean start)
+    {
+        if(!Hand.isEmpty())
+              {
+                for(Carta C : Hand)//Vengono considerate le carte presenti all'interno della mano del giocatore
+                {
+                    if(C.IsMarked() && !Table.isEmpty())
+                    {                
+                        int Sc = C.MaxPotential;
+                        int CardToPropagate = Hand.indexOf(C);
+
+                        Stato S1;
+
+                        if(start)
+                        {
+                            S1 = new Stato(Label+"-> "+C.nome+"/"+Sc,FT(Table,C,Sc),FH(Hand,C),Actual,FS(Score,C),turn,PlayerCards,CardToPropagate,Sc);
+                            SetSuggestedCard(Hand,S1,C,Hand.indexOf(C),Sc);
+                        }
+                        else
+                        {
+                            S1 = new Stato(Label+"-> "+C.nome+"/"+Sc,FT(Table,C,Sc),FH(Hand,C),Actual,FS(Score,C),turn,PlayerCards,SuggestedCard,SuggestedPotential);
+                            SetSuggestedCard(Hand,S1,C,SuggestedCard,SuggestedPotential);
+                        }
+
+                        Results.add(S1);
+                    }
+                   }
+                }
+    }
+    
+    /**
+     * @METHOD PredictOpponentMove
+     * 
+     * @OVERVIEW Metodo che, all'interno della generazione di uno spazio di stati
+     *           geneara uno stato risultante dalla mossa dell'avversario
+     * 
+     * @param turn Valore booleano che indica che è il turno del'avversario
+     * @param start  Valore booleano che indica se il metodo è stato chiamato per
+     *                la prima volta o meno, in modo da decidere se la carta attuale 
+     *                che porterà allo stato con guadagno massimo deve essere istanziata 
+     *                 (nel caso start sia uguale a true) oppure propagata allo stato 
+     *                successore (nel caso start sia uguale a false).
+     */
+    public void PredictOpponentMove(boolean turn,boolean start)
+    {       
+        Stato S1;
+        ClearNullCards(Opponent);
+        try{
+        if(Opponent != null && !Opponent.isEmpty())
+              {
+                for(Carta C : Opponent)//Vengono considerate le tre carte più promettenti per l'avversario
+                {
+                    if(C.IsMarked() && !Table.isEmpty())
+                    {                
+
+                                int Sc = C.MaxPotential;
+                                int CardToPropagate = Opponent.indexOf(C);
+              
+                                if(start)
+                                {
+                                    S1 = new Stato(Label+"-> "+C.nome+"/"+Sc,FT(Table,C,Sc),Hand,FKB(Actual,C),Score,turn,PlayerCards-1,CardToPropagate,Sc);
+                                    SetSuggestedCard(Opponent,S1,C,Opponent.indexOf(C),Sc);
+                                }
+                                else
+                                {
+                                    S1 = new Stato(Label+"-> "+C.nome+"/"+Sc,FT(Table,C,Sc),Hand,FKB(Actual,C),Score,turn,PlayerCards-1,SuggestedCard,SuggestedPotential);
+                                    SetSuggestedCard(Opponent,S1,C,SuggestedCard,SuggestedPotential);
+                                }
+                                
+                                S1.Opponent = FOPP(Opponent,C);
+                                S1.OpponentScore = FS(OpponentScore,C);
+
+                                Results.add(S1);
+
+                    }
+                }
+              }
+        }
+        catch(NullPointerException ex)
+        {
+            Results.remove(Results.size());
+            return;
+        }
+    }
+    
+    /**
+     * @METHOD ClearNullCards
+     * 
+     * @OVERVIEW Metodo che, per evitare errori nella propagazione degli insiemi
+     *           di carte, mani o tavoli che essi siano, elimina tutte le carte
+     *           null in anticipo.
+     * 
+     * @param Cards ArrayList di carte da ripulire.
+     */
+    public void ClearNullCards(ArrayList<Carta> Cards)
+    {
+        if(Cards != null && !(Cards.isEmpty()))
+        {
+            if(Cards.contains(null))
+            {
+                Cards.clear();
+            }
+        }
     }
             
     /**
@@ -392,6 +469,17 @@ public final class Stato
         return SCR;
     }
     
+    public int Future(int C,int Selection)
+    {
+        ArrayList<Carta> FutureHand = FH(Hand,Hand.get(C));
+        
+        ArrayList<Carta> FutureTable = FT(Table,Hand.get(C),Selection);
+        
+        int Future = SerialFromArrayLists(FutureHand,FutureTable);
+        
+        return Future;
+    }
+    
     /*----FINE METODI RELATIVI ALLA GENERAZIONE DEGLI STATI SUCCESSORI----*/
     
     /*----METODI GETTERS E SETTERS----*/
@@ -465,6 +553,11 @@ public final class Stato
     public ArrayList<Carta> GetTable()
     {
         return Table;
+    }
+    
+    public Carta GetCardOnHand(int n)
+    {
+        return Hand.get(n);
     }
     
       /**
@@ -683,7 +776,7 @@ public final class Stato
      * @return Gain : Numero in virgola mobile a doppia precisione rappresentante il guadagno complessivo 
      *                dello stato dato dalla carta giocata e dalla presa effettuata
     */
-    public double GeiGain()
+    public double GetGain()
     {
         return Gain;
     }
@@ -714,6 +807,167 @@ public final class Stato
             return "PLAYER";
         }
     }
+    
+    public int DecodeSerialCard(Carta C)
+    {
+        int Code = 0;
+
+        if(C.IsSettebello())
+        {
+            Code = 11;
+        }
+        else
+        {
+         Code = C.GetValue();
+        }
+        
+        return Code;
+    }
+    
+    public int HandSerial(ArrayList<Carta> H)
+    {
+        int Sum = 0;
+        int Code = 0;
+        
+        if(H.isEmpty())
+        {
+            Code = 13;
+            Sum += Code;
+        }
+        else
+        {
+            ArrayList<Carta> SH = new ArrayList();
+            SH.addAll(H);
+            Collections.sort(SH);
+            Collections.reverse(SH);
+
+            Code = DecodeSerialCard(SH.get(0));
+
+            Sum += Code;
+
+            if(SH.size() > 1)
+            {
+                Sum *= 100;
+                
+                Sum += (SH.get(1).GetValue()) - 1;
+                
+                if(SH.size() > 2)
+                {
+                    Sum += (SH.get(2).GetValue()) + 2;
+                }
+            }
+
+        }
+        
+        return Sum;
+    }
+    
+    public int TableSerial(ArrayList<Carta> T)
+    {
+        int Sum = 0;
+        int Code = 0;
+        
+            if(T.isEmpty())
+            {
+                Code = 12;
+                Sum += Code;
+            }
+            else
+            {
+                for(Carta C : T)
+                {                  
+                      if(C.IsSettebello())
+                        {
+                            Code = 11;
+                        }
+                        else if(C.IsMaxPrimiera)
+                        {
+                            Code = C.GetPrimieraValue();
+                        }
+                        else
+                        {
+                            Code = C.GetValue();
+                        }
+                      
+                      Sum += Code;
+                }
+            }
+            
+            return Sum;
+    }
+    
+    /**
+     * @METHOD SerialNumber
+     * 
+     * @OVERVIEW Metodo che genera un numero seriale che identifica lo stato corrente
+     *           in modo che esso possa essere inserito nel database degli stati associato
+     *           al giocatore umano o all'apprendista per rinforzo corrente.
+     * 
+     * @return FinalCode Intero di grandi dimensioni (istanza della classe BigInteger)
+     *                   rappresentante il codice dello stato.
+     */
+    public int SerialNumber()
+    {
+        StringBuilder SB = new StringBuilder();
+        
+        int Sum = 0;
+
+        Sum = HandSerial(Hand);
+
+        SB.append(Sum);
+
+        Sum = 0;
+
+        Sum = TableSerial(Table);
+
+        SB.append(Sum);
+    
+        String Final = SB.toString();
+               
+        int FinalCode = Integer.valueOf(Final);
+        
+        Serial = FinalCode;
+
+        return FinalCode;
+    }
+    
+ /**
+     * @METHOD SerialFromArrayLists
+     * 
+     * @OVERVIEW Metodo che, dati in input due strutture ArrayList contenenti
+     *           oggetti di tipo carta rappresentanti un ipotetico tavolo ed
+     *           un'ipotetica mano, genera il codice seriale del rispettivo
+     *           stato composto da queste ultime.
+     * 
+     * @param H ArrayList contenente oggetti di tipo carta rappresentante
+     *                    la mano in ipotesi.
+     * @param T ArrayList contenente oggetti di tipo carta rappresentante
+     *                    il tavolo in ipotesi.
+     * @return 
+     */
+    public int SerialFromArrayLists(ArrayList<Carta> H,ArrayList<Carta> T)
+    {
+        StringBuilder SB = new StringBuilder();
+        
+        int Sum = 0;
+        int Code = 0;
+        
+        Sum = HandSerial(Hand);
+
+        SB.append(Sum);
+
+        Sum = 0;
+
+        Sum = TableSerial(Table);
+
+        SB.append(Sum);
+    
+        String FinalCode = SB.toString();
+        int Result = Integer.valueOf(FinalCode);
+
+        return Result;
+    }
+    
     
     /**
      * @METHOD SynthesisPrint

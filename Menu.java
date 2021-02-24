@@ -1,12 +1,14 @@
 /*
 ASSO PIGLIATUTTO
-PROGETTO DI ESPERIENZE DI PROGRAMMAZIONE A.A 2019-2020
+TESI DI LAUREA A.A 2020 - 2021
 
 AUTORE : ENRICO TOMASI
 NUMERO DI MATRICOLA: 503527
 
 OVERVIEW: Implementazione di un tipico gioco di carte italiano in cui il computer
 pianifica le mosse ed agisce valutando mediante ricerca in uno spazio di stati
+da parte della CPU ed un learner di rinforzo apprende a giocare per riuscire a 
+suggerire la mossa migliore da effettuare al giocatore
 */
 package assopigliatutto;
 
@@ -21,6 +23,9 @@ public class Menu extends javax.swing.JFrame
 {
 
     boolean Testing = false;
+    Options options;
+    
+    Gioco Actual;
     
     /*----METODO COSTRUTTORE----*/
     
@@ -33,10 +38,47 @@ public class Menu extends javax.swing.JFrame
     */
     public Menu() {
         initComponents();
+        options = new Options();
+        options.SetMenu(this);
+        NameDisplayer.setText("Stai giocando come "+options.PlayerName);
     }
     
     /*----FINE METODO COSTRUTTORE----*/
 
+    /**
+     * @METHOD Update
+     * 
+     * @OVERVIEW Metodo che aggiorna la scritta relativa al giocatore attivo
+     *           durante l'esecuzione corrente visualizzandone il nome.
+     */
+    public void Update()
+    {
+        NameDisplayer.setText("Stai giocando come "+options.PlayerName);
+    }
+    
+    /**
+     * @METHOD StartGame
+     * 
+     * @OVERVIEW Metodo che inizializza una sessione di gioco secondo determinati
+     *           paramteri in input.
+     * 
+     * @param Test Valore booleano che indica se la partita da inizializzare
+     *             è un test delle funzionalità di gioco (metodo FinalTest della classe Gioco).
+     * @param Train Valore booleano che indica se nella partita da inizializzare
+     *              l'avversario della CPU è un giocatore umano (nel caso Train sia false)
+     *              o l'apprendista per rinforzo (nel caso Train sia true).
+     * @param Times Intero che rappresenta, nel caso a giocare sia l'apprendista per rinforzo
+     *              il numero di partite consecutive da giocare per migliorarne la strategia.
+     */
+    public void StartGame(boolean Test, boolean Train,int Times)
+    {
+        Board board = new Board();
+        board.NewGame(Test,Train,options.Profilo);
+        board.Sessione.SetTimesToTrain(Times);
+        Actual = board.Sessione;
+        board.setVisible(true);
+        this.dispose();
+    }
     /*----METODI DI INTERAZIONE CON L'INTERFACCIA----*/
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -48,6 +90,9 @@ public class Menu extends javax.swing.JFrame
         StartButton = new javax.swing.JButton();
         jLabel2 = new javax.swing.JLabel();
         TestButton = new javax.swing.JButton();
+        LearnerButton = new javax.swing.JButton();
+        NameDisplayer = new javax.swing.JLabel();
+        TrainingButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("ASSO PIGLIATUTTO");
@@ -62,7 +107,7 @@ public class Menu extends javax.swing.JFrame
         MenuPanel.setMinimumSize(new java.awt.Dimension(900, 600));
         MenuPanel.setPreferredSize(new java.awt.Dimension(900, 600));
 
-        jLabel1.setFont(new java.awt.Font("Ravie", 0, 48)); // NOI18N
+        jLabel1.setFont(new java.awt.Font("Ravie", 0, 60)); // NOI18N
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel1.setText("ASSO PIGLIA TUTTO");
 
@@ -80,9 +125,6 @@ public class Menu extends javax.swing.JFrame
         StartButton.setMinimumSize(new java.awt.Dimension(150, 30));
         StartButton.setPreferredSize(new java.awt.Dimension(150, 30));
         StartButton.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                StartButtonMouseClicked(evt);
-            }
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 StartButtonMousePressed(evt);
             }
@@ -98,6 +140,34 @@ public class Menu extends javax.swing.JFrame
             }
         });
 
+        LearnerButton.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
+        LearnerButton.setText("OPZIONI");
+        LearnerButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                LearnerButtonMousePressed(evt);
+            }
+        });
+        LearnerButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                LearnerButtonActionPerformed(evt);
+            }
+        });
+
+        NameDisplayer.setFont(new java.awt.Font("Tahoma", 1, 36)); // NOI18N
+        NameDisplayer.setForeground(new java.awt.Color(255, 51, 51));
+        NameDisplayer.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+
+        TrainingButton.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
+        TrainingButton.setText("GUARDAMI GIOCARE");
+        TrainingButton.setMaximumSize(new java.awt.Dimension(150, 30));
+        TrainingButton.setMinimumSize(new java.awt.Dimension(150, 30));
+        TrainingButton.setPreferredSize(new java.awt.Dimension(150, 30));
+        TrainingButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                TrainingButtonMousePressed(evt);
+            }
+        });
+
         javax.swing.GroupLayout MenuPanelLayout = new javax.swing.GroupLayout(MenuPanel);
         MenuPanel.setLayout(MenuPanelLayout);
         MenuPanelLayout.setHorizontalGroup(
@@ -105,36 +175,47 @@ public class Menu extends javax.swing.JFrame
             .addGroup(MenuPanelLayout.createSequentialGroup()
                 .addGap(60, 60, 60)
                 .addGroup(MenuPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 1092, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(MenuPanelLayout.createSequentialGroup()
-                        .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 1092, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addContainerGap(148, Short.MAX_VALUE))
-                    .addGroup(MenuPanelLayout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
-                        .addComponent(jLabel2)
-                        .addGap(247, 247, 247)
+                        .addGroup(MenuPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(MenuPanelLayout.createSequentialGroup()
+                                .addGap(157, 157, 157)
+                                .addComponent(NameDisplayer, javax.swing.GroupLayout.PREFERRED_SIZE, 700, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(52, 52, 52))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, MenuPanelLayout.createSequentialGroup()
+                                .addComponent(jLabel2)
+                                .addGap(199, 199, 199)))
                         .addGroup(MenuPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(QuitButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(StartButton, javax.swing.GroupLayout.DEFAULT_SIZE, 300, Short.MAX_VALUE)
-                            .addComponent(TestButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addGap(58, 58, 58))))
+                            .addComponent(StartButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(TestButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(LearnerButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(TrainingButton, javax.swing.GroupLayout.PREFERRED_SIZE, 300, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                .addContainerGap(31, Short.MAX_VALUE))
         );
         MenuPanelLayout.setVerticalGroup(
             MenuPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(MenuPanelLayout.createSequentialGroup()
-                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 192, javax.swing.GroupLayout.PREFERRED_SIZE)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, MenuPanelLayout.createSequentialGroup()
+                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 154, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGroup(MenuPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(MenuPanelLayout.createSequentialGroup()
-                        .addGap(2, 2, 2)
-                        .addComponent(StartButton, javax.swing.GroupLayout.DEFAULT_SIZE, 121, Short.MAX_VALUE)
-                        .addGap(18, 18, 18)
-                        .addComponent(TestButton, javax.swing.GroupLayout.PREFERRED_SIZE, 107, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(44, 44, 44)
+                        .addComponent(StartButton, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(QuitButton, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(54, 54, 54))
+                        .addComponent(TestButton, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(LearnerButton, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(TrainingButton, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(QuitButton, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(0, 0, Short.MAX_VALUE))
                     .addGroup(MenuPanelLayout.createSequentialGroup()
-                        .addGap(18, 18, 18)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 330, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                        .addGap(39, 39, 39)
+                        .addComponent(NameDisplayer, javax.swing.GroupLayout.DEFAULT_SIZE, 60, Short.MAX_VALUE)
+                        .addContainerGap())))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -161,10 +242,6 @@ public class Menu extends javax.swing.JFrame
     }//GEN-LAST:event_QuitButtonMousePressed
 
    
-    private void StartButtonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_StartButtonMouseClicked
-
-    }//GEN-LAST:event_StartButtonMouseClicked
-
     /*
         @METHOD TestButtonMousePressed
     
@@ -172,10 +249,7 @@ public class Menu extends javax.swing.JFrame
                   ed il conseguente inizio del test di una nuova sessione di gioco
     */
     private void TestButtonMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_TestButtonMousePressed
-        Board board = new Board();
-        board.NewGame(true);
-        board.setVisible(true);
-        this.dispose();
+        StartGame(true,false,0);
     }//GEN-LAST:event_TestButtonMousePressed
     /*
         @METHOD StartButtonMousePressed
@@ -184,11 +258,27 @@ public class Menu extends javax.swing.JFrame
                   ed il conseguente inizio di una nuova sessione di gioco
      */
     private void StartButtonMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_StartButtonMousePressed
-        Board board = new Board();
-        board.NewGame(false);
-        board.setVisible(true);
-        this.dispose();
+        StartGame(false,false,0);
     }//GEN-LAST:event_StartButtonMousePressed
+
+      /*
+        @METHOD LearnerButtonMousePressed
+    
+        @OVERVIEW Metodo che implementa la scelta di configurare il learner di gioco
+                  (un reinforcement learner) mediante il menù contestuale appropriato
+     */
+    private void LearnerButtonMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_LearnerButtonMousePressed
+       options.setVisible(true);
+    }//GEN-LAST:event_LearnerButtonMousePressed
+
+    private void LearnerButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_LearnerButtonActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_LearnerButtonActionPerformed
+
+    private void TrainingButtonMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_TrainingButtonMousePressed
+
+        StartGame(false,true,100);
+    }//GEN-LAST:event_TrainingButtonMousePressed
 
     /*----FINE METODI DI INTERAZIONE CON L'INTERFACCIA----*/
     
@@ -235,10 +325,13 @@ public class Menu extends javax.swing.JFrame
     /*----FINE METODI DEL CICLO DI VITA DEL THREAD----*/
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton LearnerButton;
     private javax.swing.JPanel MenuPanel;
+    private javax.swing.JLabel NameDisplayer;
     private javax.swing.JButton QuitButton;
     private javax.swing.JButton StartButton;
     private javax.swing.JButton TestButton;
+    private javax.swing.JButton TrainingButton;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     // End of variables declaration//GEN-END:variables

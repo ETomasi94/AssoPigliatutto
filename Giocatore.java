@@ -1,17 +1,18 @@
 /*
 ASSO PIGLIATUTTO
-PROGETTO DI ESPERIENZE DI PROGRAMMAZIONE A.A 2019-2020
+TESI DI LAUREA A.A 2020 - 2021
 
 AUTORE : ENRICO TOMASI
 NUMERO DI MATRICOLA: 503527
 
 OVERVIEW: Implementazione di un tipico gioco di carte italiano in cui il computer
 pianifica le mosse ed agisce valutando mediante ricerca in uno spazio di stati
+da parte della CPU ed un learner di rinforzo apprende a giocare per riuscire a 
+suggerire la mossa migliore da effettuare al giocatore
 */
 package assopigliatutto;
 
 import java.util.ArrayList;
-
 /*
     @CLASS Giocatore
 
@@ -38,8 +39,19 @@ public class Giocatore extends Thread
     
     ArrayList<Carta> mano;
     
-    public ArrayList<Carta> Table;//Tavolo su cui il giocatore gioca le sue carte ed effettua le sue prese
+    public ArrayList<Carta> Table;//Tavolo su cui il giocatore gioca le sue carte ed effettua le sue presa
     
+    boolean SpeedMode;
+    
+    int LearnerCardsPlayed;
+    int LearnerGreedyPlayed;    
+        
+    long InterleavingTime;
+            
+    ArrayList<Long> DecisionsTimeDuration;
+    
+    double MeanDecisionTime;
+       
     /*-------------------------------------------*/
     
     /*-------METODO COSTRUTTORE--*/
@@ -67,12 +79,16 @@ public class Giocatore extends Thread
         hastakenlast = false;
         
         Table = Tavolo;
+        
+        InterleavingTime = 150;
+                     
+        DecisionsTimeDuration = new ArrayList();       
     }
     
     /*---------------------------*/
     
     /*-------METODI DI GIOCO-----*/
-
+    
     /*
         @METHOD PickHand
     
@@ -194,6 +210,60 @@ public class Giocatore extends Thread
     {
         return mano.size();
     }
+    
+    /**
+     * @METHOD GetCard
+     * 
+     * @OVERVIEW Metodo che restituisce, dato un intero n in input, la carta
+     *           in posizione n all'interno della mano del giocatore.
+     * 
+     * @param n Indice in cui si dovrebbe troavere la carta.
+     * 
+     * @return C Carta in posizione n all'interno della mano del giocatore
+     * 
+     * @throws IllegalArgumentException se l'indice è minore di 0 o maggiore di 2
+     *         in quanto quei valori non rappresentano una posizione possibile 
+     *         per una carta nella mano del giocatore
+     */
+    public Carta GetCard(int n)
+    {
+        if(n>=0 && n<3)
+        {
+            return mano.get(n);
+        }
+        else
+        {
+            throw new IllegalArgumentException();
+        }
+    }
+    
+    /**
+     * @METHOD CardAvailable
+     * 
+     * @OVERVIEW Metdoo che, dato un intero n in input, verifica se all'interno
+     *           della mano del giocatore è presente una carta in posizione di
+     *           indice n.
+     * 
+     * @param n Indice della posizione in cui cercare la carta
+     * @return Available Valore booleano che verifica o meno se alla posizione n
+     *         è presenta una carta.
+     * 
+     * @throws IllegalArgumentException se l'indice è minore di 0 o maggiore di 2
+     *         in quanto quei valori non rappresentano una posizione possibile 
+     *         per una carta nella mano del giocatore.
+     */
+    public boolean CardAvailable(int n)
+     {
+         if(n>=0 && n<3)
+         {
+            int available = GetHandCards();
+            return (available >= n+1);
+         }
+         else
+         {
+             throw new IllegalArgumentException();
+         }
+     }
             
     
     /*
@@ -320,6 +390,23 @@ public class Giocatore extends Thread
         hastakenlast = true;
     }
     
+    /**
+     * @METHOD SetSpeedMode
+     * 
+     * @OVERVIEW Metodo che imposta il tempo di attesa di CPU e apprendista 
+     *           (istanza della classe LearninPlayer) secondo un intero lungo  
+     *           rappresentante i millisecondi di attesa, usualmente al fine
+     *           di velocizzare la durata della partita.
+     * 
+     * @param Speed Intero lungo rappresentante i millisecondi secondo cui impostare
+     *              il tempo di attesa di CPU ed apprendista
+     */
+    public void SetSpeedMode(boolean Speed)
+    {
+        InterleavingTime = 80;
+        SpeedMode = true;
+    }
+    
     /*
         @METHOD UnsetTaken
     
@@ -342,6 +429,22 @@ public class Giocatore extends Thread
     public boolean GetLastToTake()
     {
         return hastakenlast;
+    }
+    
+    public void CalculateMeanDecisionTime()
+    {
+        long Sum = 0;
+        int Decisions = DecisionsTimeDuration.size();
+        
+        for(long L : DecisionsTimeDuration)
+        {
+            Sum += L;
+        }
+        
+        long FinalValue = Sum / Decisions;
+        double Result = FinalValue / 1000.00;
+        
+        MeanDecisionTime = Result;
     }
     
     /*-------FINE METODI GETTERS E SETTERS-----------*/

@@ -1,15 +1,18 @@
 /*
 ASSO PIGLIATUTTO
-PROGETTO DI ESPERIENZE DI PROGRAMMAZIONE A.A 2019-2020
+TESI DI LAUREA A.A 2020 - 2021
 
 AUTORE : ENRICO TOMASI
 NUMERO DI MATRICOLA: 503527
 
 OVERVIEW: Implementazione di un tipico gioco di carte italiano in cui il computer
 pianifica le mosse ed agisce valutando mediante ricerca in uno spazio di stati
+da parte della CPU ed un learner di rinforzo apprende a giocare per riuscire a 
+suggerire la mossa migliore da effettuare al giocatore
 */
 package assopigliatutto;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -21,7 +24,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
     @OVERVIEW Classe che implementa la struttura di una generica carta ed i metodi
               che contribuiscono a definirla
 */
-public class Carta implements Comparable<Carta>
+public class Carta implements Comparable<Carta>,Serializable
 {
     /*----VARIABILI D'ISTANZA----*/
     
@@ -41,7 +44,11 @@ public class Carta implements Comparable<Carta>
     double ThoughtProbability;//Probabilità generica della carta
     double Weight;//Peso della carta in termini di guadagno
     
+    double MaxGain;//Numero di punti guadagnabili dalla presa attuale di valore massimo
+    
     int MaxPotential;//Indice della scelta di guadagno massimo
+    
+    boolean IsMaxPrimiera;
     
     /*----FINE VARIABILI D'ISTANZA----*/
     
@@ -148,6 +155,8 @@ public class Carta implements Comparable<Carta>
         ThoughtProbability =  1.0;
         
         Weight = 1.0;
+        
+        IsMaxPrimiera = false;
     }
     
      /*----FINE METODO COSTRUTTORE----*/
@@ -187,7 +196,7 @@ public class Carta implements Comparable<Carta>
     {
         if((Potenziale != null))
         {
-            return !(Potenziale.isEmpty());
+            return !(Potenziale.isEmpty() && !(Potenziale.containsKey(1)));
         }
         else
         {
@@ -712,6 +721,7 @@ public class Carta implements Comparable<Carta>
               }
           }
          
+          MaxGain = Max;
           SetMaxPotential(Index);
       }
     }
@@ -941,6 +951,44 @@ public class Carta implements Comparable<Carta>
         }
         
         return res;
+    }
+     
+    /**
+     * @METHOD SetMaxPrimiera
+     * 
+     * @OVERVIEW Metodo setter che conferma che la carta corrente è il massimo valore 
+     *           possibile per la primiera del giocatore che intende prenderla
+     *           dando valore true all'apposita variabile.
+     */
+    public void SetMaxPrimiera()
+    {
+        IsMaxPrimiera = true;
+    }
+    
+      /**
+     * @METHOD UnsetMaxPrimiera
+     * 
+     * @OVERVIEW Metodo setter che dichiara che la carta corrente non è il massimo valore 
+     *           possibile per la primiera del giocatore che intende prenderla
+     *           dando valore false all'apposita variabile.
+     */
+    public void UnsetMaxPrimiera()
+    {
+        IsMaxPrimiera = false;
+    }
+     
+    /**
+     * @METHOD GetMaxPrimiera
+     * 
+     * @OVERVIEW Metodo getter che restituisce in output il valore booleano
+     *           IsMaxPrimiera indicante se la carta corrente è o meno
+     *           il massimo valore possibile per la primiera del giocatore che intende prenderla
+     * 
+     * @return IsMaxPrimiera Valore booleano
+     */
+    public boolean GetMaxPrimiera()
+    {
+        return IsMaxPrimiera;
     }
 
    /*

@@ -1,6 +1,6 @@
 /*
 ASSO PIGLIATUTTO
-PROGETTO DI ESPERIENZE DI PROGRAMMAZIONE A.A 2019-2020
+TESI DI LAUREA A.A 2020 - 2021
 
 AUTORE : ENRICO TOMASI
 NUMERO DI MATRICOLA: 503527
@@ -11,12 +11,13 @@ pianifica le mosse ed agisce valutando mediante ricerca in uno spazio di stati
 package assopigliatutto;
 
 import java.util.ArrayList;
+import java.util.Random;
 
 /*
     @CLASS Punteggio
 
-    @OVERVIEW Classe che implementa la memorizzazione ed il calcolo del punteggio
-              di uno degli avversari
+    @OVERVIEW Classe che implementa il punteggio associato ad un giocatore con annessi
+              metodi per l'aggiornamento ed il calcolo dei punti.
 */
 public class Punteggio 
 {
@@ -29,8 +30,6 @@ public class Punteggio
     int Primiera;
           
     int[] PrimieraValues = {16,12,13,14,15,18,21,10,10,10};
-    
-    ArrayList<Carta> MaximumPrimieraCards = new ArrayList();
     
     ArrayList<Carta> CarteOttenute;
     
@@ -115,7 +114,7 @@ public class Punteggio
     public boolean MaxPrimiera(Carta Max)
     {
         boolean result = true;
-        
+
         for(Carta C : CarteOttenute)
         {
             if(C.seme.equals(Max.seme))
@@ -126,15 +125,14 @@ public class Punteggio
                    if(v2 > v1)
                    {
                        result = false;
+                       Max.UnsetMaxPrimiera();
+                   }
+                   else
+                   {
+                       Max.SetMaxPrimiera();
                    }
             }
-        }
-        
-
-            for(Carta C : MaximumPrimieraCards)
-            {
-                System.out.println("PRIMIERA CARD: "+C.nome);
-            }
+        }     
 
         
         return result;
@@ -449,6 +447,8 @@ public class Punteggio
         });
     }
     
+
+    
     /*
         @METHOD ScorePrint
     
@@ -477,6 +477,14 @@ public class Punteggio
             System.out.println("**NESSUNA CARTA OTTENUTA**");
         }
         */
+    }
+    
+    public synchronized void Update()
+    {
+        for(Carta C : CarteOttenute)
+        {
+            AddCard(C);
+        }
     }
     
     /*----FINE METODI DI STAMPA E DEBUG----*/

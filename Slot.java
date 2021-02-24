@@ -1,6 +1,6 @@
 /*
 ASSO PIGLIATUTTO
-PROGETTO DI ESPERIENZE DI PROGRAMMAZIONE A.A 2019-2020
+TESI DI LAUREA A.A 2020 - 2021
 
 AUTORE : ENRICO TOMASI
 NUMERO DI MATRICOLA: 503527
@@ -11,6 +11,7 @@ pianifica le mosse ed agisce valutando mediante ricerca in uno spazio di stati
 package assopigliatutto;
 
 import java.awt.Image;
+import java.io.Serializable;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 
@@ -20,7 +21,7 @@ import javax.swing.JLabel;
  * @OVERVIEW Classe che implementa una generica slot della board di gioco con le sue
  *           caratteristiche ed i suoi comportamenti
 */
-public class Slot 
+public class Slot implements Serializable
 {
     /*----VARIABILI D'ISTANZA----*/
     
@@ -97,6 +98,19 @@ public class Slot
         ic = new ImageIcon(newimg);  // transform it back
         
         Label.setIcon(ic);    
+     }
+     
+     public void Reveal()
+     {
+        int codice = Card.GetCodice();
+        
+        ImageIcon ic = new javax.swing.ImageIcon(getClass().getResource("/CardSkins/"+codice+".png"));
+        
+        Image image = ic.getImage(); // transform it 
+        Image newimg = image.getScaledInstance(100, 149,  java.awt.Image.SCALE_SMOOTH); // scale it the smooth way  
+        ic = new ImageIcon(newimg);  // transform it back
+        
+        Label.setIcon(ic);
      }
      
      /**

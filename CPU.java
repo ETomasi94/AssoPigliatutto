@@ -1,18 +1,26 @@
 /*
 ASSO PIGLIATUTTO
-PROGETTO DI ESPERIENZE DI PROGRAMMAZIONE A.A 2019-2020
+TESI DI LAUREA A.A 2020 - 2021
 
 AUTORE : ENRICO TOMASI
 NUMERO DI MATRICOLA: 503527
 
 OVERVIEW: Implementazione di un tipico gioco di carte italiano in cui il computer
 pianifica le mosse ed agisce valutando mediante ricerca in uno spazio di stati
+da parte della CPU ed un learner di rinforzo apprende a giocare per riuscire a 
+suggerire la mossa migliore da effettuare al giocatore
 */
 package assopigliatutto;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Random;
-
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 /*
     @CLASS CPU
 
@@ -34,6 +42,20 @@ public class CPU extends Giocatore
         Intelligenza Artificiale della CPU
     */
     AI Intelligence;
+    
+    ExecutorService DecisionCapability; 
+    
+    Future<Double> Res;
+    
+    boolean Timeout;
+    
+    int CardsPlayed;
+    
+    int GreedyPlayed;
+    
+    public String LastCardReceived;
+    
+    public String LastCombinationReceived;
 
     /*----METODO COSTRUTTORE----*/
     
@@ -58,6 +80,18 @@ public class CPU extends Giocatore
         KB = new KnowledgeBase(this); 
         
         Intelligence = new AI();
+        
+        DecisionCapability = Executors.newSingleThreadExecutor();
+        
+        Timeout = false;
+        
+        InterleavingTime = 500;
+        
+        SpeedMode = false;
+        
+        CardsPlayed = 0;
+        
+        GreedyPlayed = 0;
     }
     
     /*----FINE METODO COSTRUTTORE----*/
@@ -74,18 +108,6 @@ public class CPU extends Giocatore
     */
     public synchronized void GiocaACaso()
     {
-        if(!mano.isEmpty())
-        {
-            //Sleep inserita per garantire un certo interleaving tra i thread della CPU e del Giocatore
-            try 
-            {
-                Thread.sleep(750);
-            } 
-            catch (InterruptedException ex) 
-            {
-                Sessione.Halt();
-            }
-            
             int i = rnd.nextInt(mano.size());
             
             int j = 0;
@@ -95,14 +117,106 @@ public class CPU extends Giocatore
             if(card.IsMarked())
             {
                 j = 1 + rnd.nextInt(card.Potenziale.size());
+                
                 Sessione.GiocaCarta(this,j,card);
             }
             else
             {
                 Sessione.GiocaCarta(this,0,card);
             }
+    }
+    
+    /**
+     * @METHOD GiocaGreedy
+     * 
+     * @OVERVIEW Metodo che, nel caso la CPU non riesca, per lo scattare dell'apposito
+     *           timeout o per l'impossibilità di effettuare una ricerca in uno spazio
+     *           di stati efficiente, consente alla CPU di giocare in maniera greedy
+     *           ovvero di selezionare la carta con la presa di valore massimo in virtù
+     *           unicamente dello stato corrente
+     */
+    public synchronized void GiocaGreedy()
+    {      
+        InterleavingSleep();
+
+        CardsPlayed++;
+        
+        GreedyPlayed++;
             
-            System.out.println("CPU ha giocato: "+card.GetName()+"\n");
+        if(!(mano.isEmpty()))
+            {
+                Carta C = null;
+
+                int TakeIndex = ControllaPresaMassima();
+
+                if(TakeIndex == -1)
+            {
+                GiocaACaso();
+            }
+            else
+            {
+                C = GetCard(TakeIndex);
+                
+                RegisterLastCards(TakeIndex,C.MaxPotential);
+
+                Sessione.GiocaCarta(this,C.MaxPotential, C);
+            }
+        }
+        else
+        {
+            Sessione.CambioTurno();
+        }
+    }
+    
+    /**
+     * @METHOD ControllaPresaMassima
+     * 
+     * @OVERVIEW Metodo che, quando viene chiamato il metodo GiocaGreedy, controlla
+     *           qual è l'indice della carta che consente la presa massima all'interno
+     *           dello stato corrente
+     * 
+     * @return Result Inteero rappresentante l'indice della carta che consente la presa
+     *         massima
+     */
+    public synchronized int ControllaPresaMassima()
+    {
+        double Max = 0.0;
+        int Result = -1;
+        
+        if(!(mano.isEmpty()))
+        {
+            for(Carta C : mano)
+            {
+                if(C.IsMarked())
+                {
+                   double MaxTake = C.MaxGain;
+                   
+                   if(MaxTake > Max)
+                   {
+                       Max = MaxTake;
+                       
+                       Result = mano.indexOf(C);
+                   }
+                }
+            }
+        }
+        
+        return Result;
+    }
+    
+    /**
+     * @METHOD ResocontoGiocata
+     * 
+     * @OVERVIEW Metodo che stampa in output la mossa effettuata dalla CPU specificandone
+     *           la carta giocata e le carte prese dalla combinazione scelta.
+     * 
+     * @param card Carta giocata dalla CPU
+     * @param j Intero rappresentante la combinazione scelta attraverso cui la CPU
+     *          effettua la rispettiva presa.
+     */
+    public synchronized void ResocontoGiocata(Carta card,int j)
+    {
+        System.out.println("CPU ha giocato: "+card.GetName()+"\n");
             
             if(card.IsMarked())
             {
@@ -112,11 +226,55 @@ public class CPU extends Giocatore
                 card.StampaSelezione(j);
                 System.out.println("\n");
             }
-        }
-        else
-        {
-            Sessione.CambioTurno();
-        }
+    }
+    
+    /**
+     * @METHOD SetInterleavingTime
+     * 
+     * @OVERVIEW Metodo che imposta il tempo di attesa della CPU prima di agire
+     *           al fine di garantire un buon interleaving tra i processi
+     * 
+     * @param ms Intero lungo rappresentante il tempo di attesa in millisecondi
+     */
+    public void SetInterleavingTime(long ms)
+    {
+        InterleavingTime = ms;
+    }
+    
+    /**
+     * @METHOD TerminatedThinking
+     * 
+     * @OVERVIEW Metodo che verifica che l'AI abbia terminato la sua ricerca
+     *           in uno spazio di stati della mossa migliore.
+     * 
+     * @return IsDone Valore booleano che indica se l'AI ha terminato la ricerca. 
+     */
+    public boolean TerminatedThinking()
+    {
+        return Res.isDone();
+    }
+    
+    /**
+     * @METHOD InterleavingSleep
+     * 
+     * @OVERVIEW Metodo che mette il computer in attesa tramite il metodo Thread.sleep
+     *           per un tempo pari al suo tempo di interleaving prefissato.
+     * 
+     * @catch InterruptedException Se la CPU viene interrotta in maniera anomala
+     *          durante l'attesa.
+     */
+    public synchronized void InterleavingSleep()
+    {
+        //Sleep inserita per garantire un certo interleaving tra i thread della CPU e del Giocatore
+            try 
+            {
+                Thread.sleep(InterleavingTime);
+            } 
+            catch (InterruptedException ex) 
+            {
+                System.out.println("Si è verificato un errore durante la giocata della CPU. la sessione verrà conclusa");
+                Sessione.Halt();
+            }
     }
 
     /*
@@ -140,14 +298,36 @@ public class CPU extends Giocatore
                   attraverso l'algoritmo MiniMax con Potatura Alfa-Beta
     
         @PAR S : Stato attuale generato nel metodo Observe dalla stessa CPU
+    
+        @catch TimeoutException allo scattare del timeout
+    
+        @catch InterruptedException se la CPU viene interrotta in maniera anomala
+        @catch ExecutionException se avviene un errore durante l'esecuzione della CPU
     */
     public synchronized void Plan(Stato S)
     {
         if(!mano.isEmpty())
         {   
-            Intelligence.BuildTree(S,mano.size());
-            Intelligence.Decide(mano.size());
+            Intelligence.SetState(S,mano.size());
+            Res = DecisionCapability.submit(Intelligence);
+            
+            try 
+            {
+                Res.get(7L,TimeUnit.SECONDS);
+            } 
+            catch (InterruptedException | ExecutionException ex) 
+            {
+                return;
+            } 
+            catch (TimeoutException ex) 
+            {
+                Timeout = true;
+                System.out.println("TIMEOUT!");
+                return;
+            }
         }
+        
+     
     }
     
     /*
@@ -159,29 +339,41 @@ public class CPU extends Giocatore
     */
     public synchronized void Act()
     {
-        if(Intelligence.NoCardsToTake() || mano.isEmpty())
+        if(Sessione.Tavolo.size() == 12)
         {
-            System.out.println("IL COMPUTER NON PUO' FARE PRESE, VERRA' GIOCATA UNA CARTA A CASO");
-            GiocaACaso();
+            GiocaGreedy();
+        }
+        else if(mano.isEmpty())
+        {
+            Sessione.Switch();
         }
         else
-        {
-            int CardIndex = Intelligence.EstablishedCard;
-            int PotentialIndex = Intelligence.EstablishedPotential;
-            
-            Carta C = mano.get(CardIndex);
-            
-            Sessione.GiocaCarta(this,PotentialIndex, C);
-            
-             System.out.println("CPU ha scelto di giocare: "+C.GetName()+"\n");
-            
-            if(C.IsMarked())
+        {   
+
+            if(Intelligence.NoCardsToTake() || Intelligence.EstablishedCard < 0 || Sessione.Tavolo.size() >= 12)
             {
-                System.out.println(" Ed ha preso: ");
-                
-                System.out.print("\t");
-                C.StampaSelezione(PotentialIndex);
-                System.out.println("\n");
+                Timeout = false;
+
+                GiocaGreedy();
+            }
+            else
+            {
+                try
+                {
+                    int CardIndex = Intelligence.EstablishedCard;
+
+                    int PotentialIndex = Intelligence.EstablishedPotential;
+
+                    RegisterLastCards(CardIndex,PotentialIndex);
+
+                    Carta C = mano.get(CardIndex);
+
+                    Sessione.GiocaCarta(this,PotentialIndex, C);
+                }
+                catch(NullPointerException ex)
+                {
+                    GiocaGreedy();
+                }
             }
         }
     }
@@ -238,11 +430,32 @@ public class CPU extends Giocatore
         return !Sessione.Tested;
     }
     
+    /**
+     * @METHOD RegisterLastCards
+     * 
+     * @OVERVIEW Metodo di debug che memorizza l'indice dell'ultima carta e dell'ultima
+     *           combinazione ricevuti dalla CPU
+     * 
+     * @param Index Intero rappresentante l'indice dell'ultima carta.
+     * @param Comb  Intero rappresentante l'indice dell'ultima combinazione.
+     */
+    public synchronized void RegisterLastCards(int Index,int Comb)
+    {
+        LastCardReceived = String.valueOf(Index);
+                
+        LastCombinationReceived = String.valueOf(Comb);
+    }
+    
+    
+    
+    
     /*
         @METHOD run
     
         @OVERVIEW Metodo che implementa il ciclo di vita della CPU che viene eseguita secondo
-                  un ciclo Percepisci - Pianifica - Agisci quando arriva il suo turno
+                  un ciclo Percepisci - Pianifica - Agisci quando arriva il suo turno.
+    
+        @catch InterruptedException se la CPU viene interrotta in maniera anomala.
     */
     @Override
     public void run()
@@ -253,7 +466,8 @@ public class CPU extends Giocatore
             {
                 try
                 {
-                    Thread.sleep(500);
+                    Thread.sleep(InterleavingTime);
+                    Sessione.RivalutaPotenziale();
                     Stato S = Observe();
                     Plan(S);
                     Act();
@@ -261,9 +475,12 @@ public class CPU extends Giocatore
                 catch(InterruptedException e)
                 {
                     System.out.println("LA CPU E' STATA INTERROTTA DURANTE LA SUA ESECUZIONE");
+                    Sessione.Halt();
                 }
             }
         }
+        
+        DecisionCapability.shutdown();
         
         System.out.println("CPU TERMINA ESECUZIONE\n");
     }

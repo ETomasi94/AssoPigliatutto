@@ -1,6 +1,6 @@
 /*
 ASSO PIGLIATUTTO
-PROGETTO DI ESPERIENZE DI PROGRAMMAZIONE A.A 2019-2020
+TESI DI LAUREA A.A 2020 - 2021
 
 AUTORE : ENRICO TOMASI
 NUMERO DI MATRICOLA: 503527
@@ -10,8 +10,15 @@ pianifica le mosse ed agisce valutando mediante ricerca in uno spazio di stati
 */
 package assopigliatutto;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -67,6 +74,23 @@ public class TesterDebugger
         Tav = game.Tavolo;
         
         Attempts = 0;
+    }
+    
+    /**
+     * @METHOD Update()
+     * 
+     * @OVERVIEW Metodo che aggiorna il testerdebugger corrente ricavando lo stato
+     *           delle carte in tavola e nelle mani dei giocatori direttamente dal gioco
+     * 
+     */
+    public void Update()
+    {
+        Computer = Sessione.CPU;
+        P1 = Sessione.Player;
+        Mz = Sessione.Carte;
+        Tav = Sessione.Tavolo;
+        
+        Attempts = 0;  
     }
     
        /**
@@ -277,6 +301,7 @@ public class TesterDebugger
         Tav.add(new Carta('s',2));
         
         Collections.sort(Tav);
+
     }
     
      /**
@@ -720,6 +745,276 @@ public class TesterDebugger
         P1.mano.add(C8);
         P1.mano.add(C9);
         P1.mano.add(C10);
+    }
+    
+    public void LearnerBugConfiguration()
+    {
+        ClearCards();
+        
+        Carta C1 = new Carta('c',2);       
+        Carta C2 = new Carta('b',3);
+        Carta C3 = new Carta('s',8);
+        
+        Carta C4 = new Carta('d',3);
+        Carta C5 = new Carta('b',7);
+        
+        Carta C6 = new Carta('b',10);
+        Carta C7 = new Carta('c',9);
+        Carta C8 = new Carta('d',9);
+        Carta C9 = new Carta('b',9);
+        Carta C10 = new Carta('c',8);
+        Carta C11 = new Carta('d',8);
+        Carta C12 = new Carta('c',7);
+        Carta C13 = new Carta('d',7);
+        Carta C14 = new Carta('d',6);
+        Carta C15 = new Carta('c',6);
+        Carta C16 = new Carta('b',4);
+        Carta C17 = new Carta('s',2);
+        
+        Mz.remove(C1);
+        Mz.remove(C2);
+        Mz.remove(C3);
+        Mz.remove(C4);
+        Mz.remove(C5);
+        Mz.remove(C6);
+        Mz.remove(C7);
+        Mz.remove(C8);
+        Mz.remove(C9);
+        Mz.remove(C10);
+        Mz.remove(C11);
+        Mz.remove(C12);
+        Mz.remove(C13);
+        Mz.remove(C14);
+        Mz.remove(C15);
+        Mz.remove(C16);
+        Mz.remove(C17);
+                
+        
+        P1.mano.add(C1);
+        P1.mano.add(C2);
+        P1.mano.add(C3);
+        
+        Computer.mano.add(C4);
+        Computer.mano.add(C5);
+        Computer.mano.add(C6);
+                        
+        Tav.add(C7);
+        Tav.add(C8);
+        Tav.add(C9);
+        Tav.add(C10);
+        Tav.add(C11);
+        Tav.add(C12);
+        Tav.add(C13);
+        Tav.add(C14);
+        Tav.add(C15);
+        Tav.add(C16);
+        Tav.add(C17);
+        
+        Mz.clear();
+    }
+    
+    public void ReadFromDump(String TimeMark)
+    {
+        String[] TS = TimeMark.split("-");
+        
+        String Turn = "";
+        
+        if(TS.length < 2)
+        {
+            return;
+        }
+        else
+        {
+            Turn = TS[1];
+        }
+        
+        System.out.println(Turn);
+        
+        if(Turn.equals("CPU"))
+        {
+            Sessione.CPU.AssegnaTurno(true);
+            Sessione.Player.AssegnaTurno(false);
+        }
+        else
+        {
+            Sessione.CPU.AssegnaTurno(false);
+            Sessione.Player.AssegnaTurno(true);
+        }
+        
+        String HandLocation = "src/main/statedumps/"+TimeMark+".hand";
+        
+        String CPUHandLocation = "src/main/statedumps/"+TimeMark+".cpuh";
+        
+        String TableLocation = "src/main/statedumps/"+TimeMark+".tbl";
+        
+        String DeckLocation = "src/main/statedumps/"+TimeMark+".dck";
+        
+        ClearCards();
+        
+        Mz.clear();
+            
+        try 
+        {
+         FileInputStream FileIn = new FileInputStream(HandLocation);
+         ObjectInputStream In = new ObjectInputStream(FileIn);
+         
+         ArrayList<Carta> MANO = (ArrayList<Carta>) In.readObject();
+         
+         P1.mano.addAll(MANO);
+         
+         In.close();
+         
+         FileIn.close();
+      } 
+      catch (ClassNotFoundException ex) 
+      { 
+          ex.printStackTrace();
+      } 
+      catch (IOException e)
+      {
+          e.printStackTrace();
+      }
+        
+       try 
+        {
+         FileInputStream FileIn = new FileInputStream(CPUHandLocation);
+         ObjectInputStream In = new ObjectInputStream(FileIn);
+         
+         ArrayList<Carta> CPHND = (ArrayList<Carta>) In.readObject();
+         
+         Computer.mano.addAll(CPHND);
+
+         In.close();
+         FileIn.close();
+      } 
+      catch (ClassNotFoundException ex) 
+      { 
+          ex.printStackTrace();
+      } 
+      catch (IOException e)
+      {
+          e.printStackTrace();
+      }  
+       
+        try 
+        {
+         FileInputStream FileIn = new FileInputStream(TableLocation);
+         ObjectInputStream In = new ObjectInputStream(FileIn);
+         
+         ArrayList<Carta> TV = (ArrayList<Carta>) In.readObject();
+         
+         Tav.addAll(TV);
+
+         In.close();
+         FileIn.close();
+      } 
+      catch (ClassNotFoundException ex) 
+      { 
+          ex.printStackTrace();
+      } 
+      catch (IOException e)
+      {
+          e.printStackTrace();
+      }
+        
+        try 
+        {
+         FileInputStream FileIn = new FileInputStream(DeckLocation);
+         ObjectInputStream In = new ObjectInputStream(FileIn);
+         
+         ArrayList<Carta> MZ = (ArrayList<Carta>) In.readObject();
+         
+         Mz.addAll(MZ);
+         
+         In.close();
+         FileIn.close();
+      } 
+      catch (ClassNotFoundException ex) 
+      { 
+          ex.printStackTrace();
+      } 
+      catch (IOException e)
+      {
+          e.printStackTrace();
+      }  
+    }
+
+    public void WriteDump()
+    {           
+        String Turn;
+        
+        if(Computer.turn)
+        {
+            Turn = "CPU";
+        }
+        else
+        {
+            Turn = "P1";
+        }
+        
+        String TimeMark = new SimpleDateFormat("HHmm").format(new Date()) +"-"+Turn;
+        
+        String HandLocation = "src/main/statedumps/"+TimeMark+".hand";
+        
+        String CPUHandLocation = "src/main/statedumps/"+TimeMark+".cpuh";
+        
+        String TableLocation = "src/main/statedumps/"+TimeMark+".tbl";
+        
+        String DeckLocation = "src/main/statedumps/"+TimeMark+".dck";
+        
+        
+                
+        try(FileOutputStream FileOut = new FileOutputStream(HandLocation)) 
+          {
+              ObjectOutputStream Out = new ObjectOutputStream(FileOut);
+
+              Out.writeObject(Sessione.Player.mano);
+
+              Out.close();
+          } 
+          catch (IOException i) 
+          {
+             i.printStackTrace();
+          }
+        
+       try(FileOutputStream FileOut = new FileOutputStream(CPUHandLocation))
+       {
+           ObjectOutputStream Out = new ObjectOutputStream(FileOut);
+
+           Out.writeObject(Sessione.CPU.mano);
+
+           Out.close();
+       }
+       catch(IOException e)
+       {
+           e.printStackTrace();
+       }
+       
+       try(FileOutputStream FileOut = new FileOutputStream(TableLocation))
+       {
+           ObjectOutputStream Out = new ObjectOutputStream(FileOut);
+
+              Out.writeObject(Sessione.Tavolo);
+
+              Out.close();
+       }
+       catch(IOException e)
+       {
+           e.printStackTrace();
+       }
+       
+       try(FileOutputStream FileOut = new FileOutputStream(DeckLocation))
+       {
+           ObjectOutputStream Out = new ObjectOutputStream(FileOut);
+
+              Out.writeObject(Sessione.Carte);
+
+              Out.close();
+       }
+       catch(IOException e)
+       {
+           e.printStackTrace();
+       }
     }
     
     /*----FINE METODI DI CONFIGURAZIONE DEL GIOCO----*/

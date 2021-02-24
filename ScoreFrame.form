@@ -72,54 +72,57 @@
                           <Component id="Titolo" pref="1280" max="32767" attributes="0"/>
                       </Group>
                       <Group type="102" attributes="0">
-                          <Group type="103" groupAlignment="0" attributes="0">
-                              <Group type="102" alignment="0" attributes="0">
-                                  <EmptySpace min="-2" pref="233" max="-2" attributes="0"/>
-                                  <Group type="103" groupAlignment="1" attributes="0">
-                                      <Component id="PrimieraOfPlayer" min="-2" pref="160" max="-2" attributes="0"/>
-                                      <Component id="CoinsPlayer" min="-2" pref="160" max="-2" attributes="0"/>
-                                      <Component id="SettebelloPlayer" min="-2" pref="160" max="-2" attributes="0"/>
-                                      <Component id="ScopePlayer" min="-2" pref="160" max="-2" attributes="0"/>
-                                      <Component id="TakenPlayer" min="-2" pref="160" max="-2" attributes="0"/>
-                                      <Component id="PlayerL" alignment="1" min="-2" pref="160" max="-2" attributes="0"/>
-                                  </Group>
-                                  <Group type="103" groupAlignment="0" attributes="0">
-                                      <Group type="102" alignment="0" attributes="0">
-                                          <EmptySpace min="-2" pref="98" max="-2" attributes="0"/>
-                                          <Group type="103" groupAlignment="0" attributes="0">
-                                              <Component id="DenariPresi" alignment="0" min="-2" pref="281" max="-2" attributes="0"/>
-                                              <Component id="SettebelloCheck" min="-2" pref="281" max="-2" attributes="0"/>
-                                              <Component id="CartePrese" alignment="0" min="-2" pref="281" max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="1" attributes="0">
+                              <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                                  <Group type="102" attributes="0">
+                                      <EmptySpace min="-2" pref="233" max="-2" attributes="0"/>
+                                      <Group type="103" groupAlignment="1" attributes="0">
+                                          <Component id="PrimieraOfPlayer" min="-2" pref="160" max="-2" attributes="0"/>
+                                          <Component id="CoinsPlayer" min="-2" pref="160" max="-2" attributes="0"/>
+                                          <Component id="SettebelloPlayer" min="-2" pref="160" max="-2" attributes="0"/>
+                                          <Component id="ScopePlayer" min="-2" pref="160" max="-2" attributes="0"/>
+                                          <Component id="TakenPlayer" min="-2" pref="160" max="-2" attributes="0"/>
+                                          <Component id="PlayerL" alignment="1" min="-2" pref="160" max="-2" attributes="0"/>
+                                      </Group>
+                                      <Group type="103" groupAlignment="0" attributes="0">
+                                          <Group type="102" alignment="0" attributes="0">
+                                              <EmptySpace min="-2" pref="98" max="-2" attributes="0"/>
+                                              <Group type="103" groupAlignment="0" attributes="0">
+                                                  <Component id="DenariPresi" alignment="0" min="-2" pref="281" max="-2" attributes="0"/>
+                                                  <Component id="SettebelloCheck" min="-2" pref="281" max="-2" attributes="0"/>
+                                                  <Component id="CartePrese" alignment="0" min="-2" pref="281" max="-2" attributes="0"/>
+                                              </Group>
+                                          </Group>
+                                          <Group type="102" alignment="1" attributes="0">
+                                              <EmptySpace max="-2" attributes="0"/>
+                                              <Group type="103" groupAlignment="0" attributes="0">
+                                                  <Component id="PrimieraTotalizzata" alignment="0" min="-2" pref="281" max="-2" attributes="0"/>
+                                                  <Component id="ScopeOttenute" min="-2" pref="281" max="-2" attributes="0"/>
+                                              </Group>
                                           </Group>
                                       </Group>
-                                      <Group type="102" alignment="1" attributes="0">
-                                          <EmptySpace max="-2" attributes="0"/>
-                                          <Group type="103" groupAlignment="0" attributes="0">
-                                              <Component id="PrimieraTotalizzata" alignment="0" min="-2" pref="281" max="-2" attributes="0"/>
-                                              <Component id="ScopeOttenute" min="-2" pref="281" max="-2" attributes="0"/>
-                                          </Group>
+                                      <EmptySpace min="-2" pref="99" max="-2" attributes="0"/>
+                                      <Group type="103" groupAlignment="0" attributes="0">
+                                          <Component id="PrimieraOfCPU" min="-2" pref="160" max="-2" attributes="0"/>
+                                          <Component id="TakenCPU" min="-2" pref="160" max="-2" attributes="0"/>
+                                          <Component id="CoinsCPU" min="-2" pref="160" max="-2" attributes="0"/>
+                                          <Component id="ScopeCPU" min="-2" pref="160" max="-2" attributes="0"/>
+                                          <Component id="SettebelloCPU" min="-2" pref="160" max="-2" attributes="0"/>
+                                          <Component id="CPUName" min="-2" pref="160" max="-2" attributes="0"/>
                                       </Group>
                                   </Group>
-                                  <EmptySpace min="-2" pref="99" max="-2" attributes="0"/>
-                                  <Group type="103" groupAlignment="0" attributes="0">
-                                      <Component id="PrimieraOfCPU" min="-2" pref="160" max="-2" attributes="0"/>
-                                      <Component id="TakenCPU" min="-2" pref="160" max="-2" attributes="0"/>
-                                      <Component id="CoinsCPU" min="-2" pref="160" max="-2" attributes="0"/>
-                                      <Component id="ScopeCPU" min="-2" pref="160" max="-2" attributes="0"/>
-                                      <Component id="SettebelloCPU" min="-2" pref="160" max="-2" attributes="0"/>
-                                      <Component id="CPUName" min="-2" pref="160" max="-2" attributes="0"/>
+                                  <Group type="102" attributes="0">
+                                      <EmptySpace min="-2" pref="374" max="-2" attributes="0"/>
+                                      <Component id="WinnerLabel" min="-2" pref="546" max="-2" attributes="0"/>
                                   </Group>
                               </Group>
-                              <Group type="102" alignment="0" attributes="0">
-                                  <EmptySpace min="-2" pref="374" max="-2" attributes="0"/>
-                                  <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                                      <Component id="WinnerLabel" max="32767" attributes="0"/>
-                                      <Group type="102" attributes="0">
-                                          <Component id="BackToMenuButton1" min="-2" pref="270" max="-2" attributes="0"/>
-                                          <EmptySpace max="-2" attributes="0"/>
-                                          <Component id="QuitButton" min="-2" pref="270" max="-2" attributes="0"/>
-                                      </Group>
-                                  </Group>
+                              <Group type="102" alignment="1" attributes="0">
+                                  <EmptySpace max="-2" attributes="0"/>
+                                  <Component id="PlayAgainButton" min="-2" pref="270" max="-2" attributes="0"/>
+                                  <EmptySpace max="-2" attributes="0"/>
+                                  <Component id="BackToMenuButton" min="-2" pref="270" max="-2" attributes="0"/>
+                                  <EmptySpace max="-2" attributes="0"/>
+                                  <Component id="QuitButton" min="-2" pref="270" max="-2" attributes="0"/>
                               </Group>
                           </Group>
                           <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
@@ -170,12 +173,13 @@
                   </Group>
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="WinnerLabel" pref="82" max="32767" attributes="0"/>
-                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                  <EmptySpace type="separate" max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="3" attributes="0">
+                      <Component id="PlayAgainButton" alignment="3" min="-2" pref="60" max="-2" attributes="0"/>
                       <Component id="QuitButton" alignment="3" min="-2" pref="60" max="-2" attributes="0"/>
-                      <Component id="BackToMenuButton1" alignment="3" min="-2" pref="60" max="-2" attributes="0"/>
+                      <Component id="BackToMenuButton" alignment="3" min="-2" pref="60" max="-2" attributes="0"/>
                   </Group>
-                  <EmptySpace min="-2" pref="36" max="-2" attributes="0"/>
+                  <EmptySpace min="-2" pref="29" max="-2" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -516,10 +520,45 @@
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="QuitButtonActionPerformed"/>
           </Events>
         </Component>
-        <Component class="javax.swing.JButton" name="BackToMenuButton1">
+        <Component class="javax.swing.JButton" name="PlayAgainButton">
           <Properties>
             <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
               <Color blue="66" green="cc" red="0" type="rgb"/>
+            </Property>
+            <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+              <Font name="Tahoma" size="24" style="1"/>
+            </Property>
+            <Property name="text" type="java.lang.String" value="GIOCA ANCORA"/>
+            <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+              <Dimension value="[270, 60]"/>
+            </Property>
+            <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+              <Dimension value="[270, 60]"/>
+            </Property>
+            <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+              <Dimension value="[300, 60]"/>
+            </Property>
+          </Properties>
+          <Events>
+            <EventHandler event="mousePressed" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="PlayAgainButtonMousePressed"/>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="PlayAgainButtonActionPerformed"/>
+          </Events>
+        </Component>
+        <Component class="javax.swing.JLabel" name="WinnerLabel">
+          <Properties>
+            <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+              <Font name="Trajan Pro" size="36" style="1"/>
+            </Property>
+            <Property name="foreground" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
+              <Color blue="ff" green="ff" red="ff" type="rgb"/>
+            </Property>
+            <Property name="horizontalAlignment" type="int" value="0"/>
+          </Properties>
+        </Component>
+        <Component class="javax.swing.JButton" name="BackToMenuButton">
+          <Properties>
+            <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
+              <Color blue="0" green="0" red="ff" type="rgb"/>
             </Property>
             <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
               <Font name="Tahoma" size="24" style="1"/>
@@ -536,20 +575,9 @@
             </Property>
           </Properties>
           <Events>
-            <EventHandler event="mousePressed" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="BackToMenuButton1MousePressed"/>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="BackToMenuButton1ActionPerformed"/>
+            <EventHandler event="mousePressed" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="BackToMenuButtonMousePressed"/>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="BackToMenuButtonActionPerformed"/>
           </Events>
-        </Component>
-        <Component class="javax.swing.JLabel" name="WinnerLabel">
-          <Properties>
-            <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
-              <Font name="Trajan Pro" size="36" style="1"/>
-            </Property>
-            <Property name="foreground" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
-              <Color blue="ff" green="ff" red="ff" type="rgb"/>
-            </Property>
-            <Property name="horizontalAlignment" type="int" value="0"/>
-          </Properties>
         </Component>
       </SubComponents>
     </Container>

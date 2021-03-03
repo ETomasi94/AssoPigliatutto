@@ -699,6 +699,8 @@ public class Gioco extends Thread
             double CPUTime = CPU.MeanDecisionTime;
             double LearnerTime = Player.MeanDecisionTime;
             
+            BotQ.UpdateOnWinning();
+            
             Gamer.Learner = Learner;
             Gamer.SaveLearner(Learner);
             Gamer.UpdateStatsAutomatic(Winning,CPl,CGPl,LCPl,LCGPl,Expl,Expt,CPUTime,LearnerTime);

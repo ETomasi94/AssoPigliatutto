@@ -10,6 +10,7 @@ pianifica le mosse ed agisce valutando mediante ricerca in uno spazio di stati
 */
 package assopigliatutto;
 
+import com.github.chen0040.rl.actionselection.SoftMaxActionSelectionStrategy;
 import com.github.chen0040.rl.learning.qlearn.QLearner;
 import com.github.chen0040.rl.utils.Matrix;
 import com.github.chen0040.rl.models.QModel;
@@ -185,6 +186,7 @@ public class Profile
             Learner = new QLearner(111130,112);
             Learner.getModel().setAlpha(0.9);
             Learner.getModel().setGamma(0.4);
+            Learner.setActionSelection(SoftMaxActionSelectionStrategy.class.getCanonicalName());
 
             System.out.println("NUOVO LEARNER CREATO PER IL GIOCAORE "+name);
             L = Learner.toJson();

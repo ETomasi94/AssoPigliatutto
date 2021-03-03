@@ -337,12 +337,23 @@ public final class QBot extends Bot
         
     }
     
+    public synchronized void UpdateOnWinning()
+    {
+        for(Mossa M : Mosse)
+        {
+            int State = M.OldState;
+            int Action = M.Action;
+            int NewState = M.NewState;
+            double IncreasedReward = M.Reward + 0.2;
+            UpdateBot(State,Action,NewState,IncreasedReward);
+        }
+    }
+    
     public synchronized void UpdateBot(int State,int Action,int NextState,double Reward)
     {
         System.out.println("OLD BINDING FOR STATE: "+State+" ACTION: "+Action+"REWARD: "+GetBinding(State,Action));
         Suggester.update(State, Action, NextState, Reward);
         System.out.println("NEW BINDING FOR STATE: "+State+" ACTION: "+Action+"REWARD: "+GetBinding(State,Action));
-
         Game.Gamer.Statistics.AddGameReward(GetBinding(State,Action));
         Game.Gamer.Statistics.AddGameQReward(Reward);
         Game.Gamer.Statistics.AddTrainingReward(GetBinding(State,Action));
